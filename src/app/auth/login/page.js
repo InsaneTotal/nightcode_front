@@ -25,7 +25,7 @@ export default function Login() {
             src="/logo_sinfondo.png"
             alt="Logo NightCode"
             width={400}
-            height={400}
+            height={401}
             className="rounded-md"
           />
           <h1 className="text-5xl items-center font-bold text-yellow-400 drop-shadow-[0_0_15px_rgba(255,215,0,0.8)] pb-6">
