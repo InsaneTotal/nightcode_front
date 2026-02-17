@@ -1,11 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function MenuLicores() {
   const [openSection, setOpenSection] = useState("cervezas");
+  const [currentAd, setCurrentAd] = useState(0);
+
+  const ads = ["/ads/ad6.png", "/ads/ad8.png", "/ads/ad7.png"];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentAd((prev) => (prev + 1) % ads.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const toggleSection = (section) => {
     setOpenSection(openSection === section ? null : section);
@@ -18,15 +29,14 @@ export default function MenuLicores() {
       image: "/cervezas/poker.png",
       name: "POKER",
       description:
-        "¡Destapa la amistad con Cerveza Poker! La lager colombiana por excelencia con el balance perfecto entre amargor y suavidad.",
+        "¡Destapa la amistad con Cerveza Poker! Lager colombiana con balance perfecto entre amargor y suavidad.",
     },
     {
       id: "wiskey",
       title: "Wiskey",
       image: "/licores/jack.png",
       name: "Jack Daniel's",
-      description:
-        "Whiskey americano con notas ahumadas y sabor intenso, perfecto para la noche.",
+      description: "Whiskey americano con notas ahumadas y sabor intenso.",
     },
     {
       id: "aguardiente",
@@ -34,158 +44,148 @@ export default function MenuLicores() {
       image: "/licores/aguardiente.png",
       name: "Aguardiente Antioqueño",
       description:
-        "Tradicional aguardiente colombiano con sabor anisado suave y refrescante.",
+        "Tradicional aguardiente colombiano con sabor anisado suave.",
     },
     {
       id: "ron",
       title: "Ron",
       image: "/licores/ron.png",
       name: "Ron Medellín",
-      description:
-        "Ron añejo con notas dulces y acarameladas ideal para compartir.",
-    },
-    {
-      id: "otros",
-      title: "Otros",
-      image: "/licores/vodka.png",
-      name: "Absolut Vodka",
-      description:
-        "Vodka premium de sabor limpio y suave, perfecto para cocteles.",
+      description: "Ron añejo con notas dulces ideal para compartir.",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white pb-28">
-      <div className="max-w-5xl mx-auto px-6">
-        {/* PUBLICIDAD */}
-        <div className="h-40 flex items-center justify-center">
-          <h2 className="text-4xl tracking-widest text-gray-300">PUBLICIDAD</h2>
-        </div>
-        {/* MENU TITULO */}
-        <div className="text-center py-3 border-b border-yellow-600">
-          <h3 className="text-yellow-500 text-lg tracking-widest">MENU</h3>
-        </div>
-        {/* SECCIONES */}
-        <div className="space-y-4 mt-6">
-          {sections.map((section) => (
-            <div
-              key={section.id}
-              className="rounded-2xl overflow-hidden
-                         bg-gradient-to-r from-[#3a1f3f] to-[#1f1024]
-                         shadow-[0_10px_30px_rgba(0,0,0,0.6)]
-                         transition-all duration-300"
+    <div className="min-h-screen bg-gradient-to-br from-black via-[#0b0b0b] to-black text-white pb-32 px-4 pt-6">
+      <div className="max-w-2xl mx-auto space-y-8">
+        {/* 🔥 SLIDER PREMIUM */}
+        <div className="relative h-48 rounded-3xl overflow-hidden shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentAd}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1 }}
+              className="absolute inset-0"
             >
-              {/* BOTÓN */}
+              <Image
+                src={ads[currentAd]}
+                alt="Publicidad"
+                fill
+                className=""
+                priority
+              />
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="absolute inset-0 bg-black/40" />
+
+          {/* Indicadores */}
+          <div className="absolute bottom-4 w-full flex justify-center gap-2">
+            {ads.map((_, index) => (
+              <div
+                key={index}
+                className={`h-2 w-6 rounded-full transition-all ${
+                  currentAd === index ? "bg-yellow-400 w-10" : "bg-white/30"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* TITULO */}
+        <h2 className="text-center text-yellow-400 tracking-widest text-lg">
+          MENÚ DIGITAL
+        </h2>
+
+        {/* 🔥 SECCIONES MEJORADAS */}
+        <div className="space-y-4">
+          {sections.map((section) => (
+            <motion.div
+              key={section.id}
+              whileHover={{ scale: 1.01 }}
+              className="rounded-2xl border border-yellow-400/20
+                         bg-white/5 backdrop-blur-xl
+                         shadow-lg overflow-hidden"
+            >
               <button
                 onClick={() => toggleSection(section.id)}
-                className={`w-full flex justify-between items-center px-6 py-5
-                            transition-all duration-300
-                            ${
-                              openSection === section.id
-                                ? "bg-black"
-                                : "bg-transparent hover:bg-white/5"
-                            }`}
+                className="w-full flex justify-between items-center px-5 py-5"
               >
-                <span className="text-white text-lg tracking-wide font-medium">
-                  {section.title}
-                </span>
+                <span className="text-lg font-semibold">{section.title}</span>
 
-                <ChevronDown
-                  className={`transition-all duration-300 ${
-                    openSection === section.id
-                      ? "rotate-180 text-yellow-400"
-                      : "text-yellow-500"
-                  }`}
-                />
+                <motion.div
+                  animate={{
+                    rotate: openSection === section.id ? 180 : 0,
+                  }}
+                >
+                  <ChevronDown size={22} />
+                </motion.div>
               </button>
 
-              {/* CONTENIDO */}
-              {openSection === section.id && (
-                <div className="bg-[#0f0f0f] p-6 animate-fadeIn">
-                  <div
-                    className="flex gap-6 p-5 rounded-xl
-                                  bg-[#141414]
-                                  shadow-[0_0_40px_rgba(255,193,7,0.08)]"
+              <AnimatePresence>
+                {openSection === section.id && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
                   >
-                    {/* IMAGEN */}
-                    <div className="relative w-28 h-40 animate-[float_3s_ease-in-out_infinite]">
-                      <Image
-                        src={section.image}
-                        alt={section.name}
-                        fill
-                        className="object-contain drop-shadow-[0_0_25px_rgba(255,204,0,0.6)]"
-                      />
-                    </div>
+                    <div className="border-t border-yellow-400/20 px-5 py-6 flex gap-5 items-center">
+                      {/* Imagen flotante */}
+                      <motion.div
+                        animate={{ y: [0, -8, 0] }}
+                        transition={{
+                          duration: 3,
+                          repeat: Infinity,
+                        }}
+                        className="relative w-24 h-36"
+                      >
+                        <Image
+                          src={section.image}
+                          alt={section.name}
+                          fill
+                          className="object-contain drop-shadow-[0_0_25px_rgba(255,193,7,0.6)]"
+                        />
+                      </motion.div>
 
-                    {/* DESCRIPCIÓN */}
-                    <div>
-                      <h4 className="text-yellow-500 font-semibold mb-2">
-                        {section.name}
-                      </h4>
-                      <p className="text-sm text-gray-300">
-                        {section.description}
-                      </p>
+                      <div>
+                        <h4 className="text-yellow-400 font-bold mb-2">
+                          {section.name}
+                        </h4>
+                        <p className="text-sm text-gray-300 leading-relaxed">
+                          {section.description}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           ))}
         </div>
 
-        {/* BOTÓN LLAMAR MESERO */}
-        <div className="mt-8 mb-6 flex justify-center">
-          <button
-            className="max-w-72 px-10 py-4 rounded-2xl 
-                       bg-gradient-to-r from-yellow-400 to-yellow-200
-                       text-black font-bold text-lg tracking-wide
-                       shadow-[0_0_30px_rgba(255,193,7,0.5)]
-                       hover:scale-105 hover:shadow-[0_0_40px_rgba(255,193,7,0.7)]
-                       transition duration-300"
-          >
-            📞 Llamar mesero
-          </button>
-        </div>
-      </div>
-      {/* FOOTER */}
-      {/* BARRA INFERIOR ESTILO HEADER */}
-      {/* FOOTER */}
-      <div className="fixed bottom-0 left-0 w-full z-50">
-        {/* Línea dorada animada */}
-        <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-yellow-400 to-transparent animate-pulse"></div>
-
-        <div
-          className="relative overflow-hidden w-full
-               bg-gradient-to-r from-[#3a1f3f] to-[#1f1024]
-               border-t border-yellow-400/30
-               shadow-[0_-10px_30px_rgba(0,0,0,0.6)]
-               flex
-               before:absolute before:inset-0 
-               before:bg-[radial-gradient(circle_at_80%_50%,rgba(255,193,7,0.08),transparent_40%)] 
-               before:pointer-events-none"
+        {/* 🔥 BOTÓN PREMIUM */}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          className="w-full py-4 rounded-2xl 
+                     bg-yellow-500 text-black font-bold tracking-wide
+                     shadow-[0_0_25px_rgba(255,193,7,0.5)]"
         >
-          {/* MITAD IZQUIERDA */}
-          <div
-            className="w-1/2 text-center py-6
-                 text-yellow-400 font-medium tracking-wide
-                 hover:bg-yellow-400 hover:text-black
-                 transition duration-300 cursor-pointer"
-          >
-            🎵 Escucha tu música
-          </div>
+          📞 Llamar mesero
+        </motion.button>
+      </div>
 
-          {/* Separador */}
-          <div className="w-px bg-yellow-400/20"></div>
-
-          {/* MITAD DERECHA */}
-          <div
-            className="w-1/2 text-center py-6
-                 text-yellow-400 font-medium tracking-wide
-                 hover:bg-yellow-400 hover:text-black
-                 transition duration-300 cursor-pointer"
-          >
-            📖 Menú
-          </div>
+      {/* 🔥 FOOTER MEJORADO */}
+      <div className="fixed bottom-0 left-0 w-full bg-black/90 backdrop-blur-xl border-t border-yellow-400/20 flex">
+        <div className="w-1/2 py-4 text-center text-yellow-400 hover:bg-yellow-500 hover:text-black transition">
+          🎵 Música
+        </div>
+        <div className="w-px bg-yellow-400/20"></div>
+        <div className="w-1/2 py-4 text-center text-yellow-400 hover:bg-yellow-500 hover:text-black transition">
+          📖 Menú
         </div>
       </div>
     </div>
