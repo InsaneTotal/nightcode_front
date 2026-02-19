@@ -2,11 +2,13 @@
 
 import { useState, useMemo } from "react";
 import { Search, Pencil } from "lucide-react";
+import EditInventarioModal from "./editInventarioModal"; // 👈 IMPORT
 
 export default function InventarioView() {
   const [search, setSearch] = useState("");
 
-  const products = [
+  // 🔥 Ahora products es estado (antes era const normal)
+  const [products, setProducts] = useState([
     {
       id: 1,
       name: "Poker Pipona",
@@ -31,7 +33,10 @@ export default function InventarioView() {
       image: "/heineken.png",
       description: "Cerveza Heineken 500ml",
     },
-  ];
+  ]);
+
+  // 🔥 Producto seleccionado para editar
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const filteredProducts = useMemo(() => {
     return products.filter(
@@ -39,7 +44,7 @@ export default function InventarioView() {
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.description.toLowerCase().includes(search.toLowerCase()),
     );
-  }, [search]);
+  }, [search, products]);
 
   const cardStyle =
     "bg-gradient-to-br from-zinc-900 via-zinc-950 to-black border border-yellow-600/20 rounded-2xl p-6";
@@ -86,6 +91,7 @@ export default function InventarioView() {
                 <h2 className="text-lg font-semibold text-yellow-400 mb-3">
                   {product.name}
                 </h2>
+
                 <p className="text-sm text-gray-400 mb-2">
                   {product.description}
                 </p>
@@ -110,12 +116,32 @@ export default function InventarioView() {
               </div>
             </div>
 
-            <button className="bg-zinc-900 border border-white/10 p-3 rounded-xl transition-colors hover:border-yellow-500">
+            {/* 🔥 BOTÓN EDITAR */}
+            <button
+              onClick={() => setSelectedProduct(product)}
+              className="bg-zinc-900 border border-white/10 p-3 rounded-xl transition-colors hover:border-yellow-500"
+            >
               <Pencil size={18} />
             </button>
           </div>
         ))}
       </div>
+
+      {/* 🔥 MODAL */}
+      {selectedProduct && (
+        <EditInventarioModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onSave={(updatedProduct) => {
+            setProducts((prev) =>
+              prev.map((p) =>
+                p.id === updatedProduct.id ? updatedProduct : p,
+              ),
+            );
+            setSelectedProduct(null);
+          }}
+        />
+      )}
     </div>
   );
 }

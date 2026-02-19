@@ -96,8 +96,9 @@ export default function Register() {
                 className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
               >
                 <option value="">Seleccione el tipo de documento</option>
-                <option value="1">Cédula</option>
-                <option value="2">Tarjeta de Identidad</option>
+                <option value="1">Cédula de Ciudadanía</option>
+                <option value="2">Pasaporte</option>
+                <option value="3">Cedula de Extranjeria</option>
               </select>
             </div>
 
@@ -166,7 +167,7 @@ export default function Register() {
                 <option value="">Seleccione el rol</option>
                 <option value="1">Administrador</option>
                 <option value="2">Mesero</option>
-                <option value="3">Empleado</option>
+                <option value="3">Barra</option>
               </select>
             </div>
 
