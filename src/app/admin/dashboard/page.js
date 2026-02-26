@@ -2,15 +2,25 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { TrendingUp, TrendingDown, Minus, Activity, Menu } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Activity,
+  Menu,
+  Settings,
+} from "lucide-react";
 
 import DashboardChart from "../components/dashboardChart";
 import InventarioView from "../components/inventarioView";
+import VentasDetalle from "../components/ventasView";
+import EmpleadosView from "../components/empleadosView";
+import ConfiguracionView from "../components/configuracionView";
 
 /* ================= COUNTER ================= */
 
 function Counter({ value }) {
-  return <span>{Math.floor(value).toLocaleString()}</span>;
+  return <span>{Math.floor(value).toLocaleString("es-CO")}</span>;
 }
 
 /* ================= DASHBOARD ================= */
@@ -18,11 +28,10 @@ function Counter({ value }) {
 export default function DashboardPage() {
   const [collapsed, setCollapsed] = useState(false);
   const [activeView, setActiveView] = useState("dashboard");
-
   const [sales, setSales] = useState(15555);
   const [currentAlert, setCurrentAlert] = useState(0);
 
-  /* ================= SIMULACIÓN VENTAS ================= */
+  /* ================= SIMULACIÓN ================= */
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -30,8 +39,6 @@ export default function DashboardPage() {
     }, 4000);
     return () => clearInterval(interval);
   }, []);
-
-  /* ================= BEBIDAS ================= */
 
   const [drinks, setDrinks] = useState([
     { name: "Cerveza Poker", sold: 120 },
@@ -50,7 +57,6 @@ export default function DashboardPage() {
         })),
       );
     }, 5000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -58,36 +64,29 @@ export default function DashboardPage() {
     return [...drinks].sort((a, b) => b.sold - a.sold).slice(0, 3);
   }, [drinks]);
 
-  /* ================= ALERTAS ================= */
-
   const lowStockProducts = [
     { name: "Cerveza Poker", stock: 2 },
     { name: "Ron Medellín", stock: 1 },
     { name: "Tequila José Cuervo", stock: 3 },
   ];
 
-  useEffect(() => {
-    if (!lowStockProducts.length) return;
+  const currentProduct =
+    lowStockProducts[currentAlert % lowStockProducts.length];
 
+  useEffect(() => {
     const interval = setInterval(() => {
       setCurrentAlert((prev) =>
         prev >= lowStockProducts.length - 1 ? 0 : prev + 1,
       );
     }, 3000);
-
     return () => clearInterval(interval);
-  }, [lowStockProducts.length]);
-
-  const currentProduct =
-    lowStockProducts[currentAlert % lowStockProducts.length];
+  }, []);
 
   const getSeverity = (stock) => {
     if (stock === 1) return "text-red-500";
     if (stock <= 3) return "text-orange-400";
     return "text-yellow-400";
   };
-
-  /* ================= ÓRDENES ================= */
 
   const orders = [
     {
@@ -125,170 +124,177 @@ export default function DashboardPage() {
     cancelar: <Minus size={16} />,
   };
 
+  const menuItems = [
+    { key: "dashboard", label: "Dashboard" },
+    { key: "inventario", label: "Inventario" },
+    { key: "ventas", label: "Ventas" },
+    { key: "empleados", label: "Empleados" },
+    { key: "configuracion", label: "Configuración" },
+  ];
+
   const cardStyle =
-    "bg-gradient-to-br from-zinc-900 via-zinc-950 to-black border border-yellow-600/20 rounded-2xl p-4 sm:p-5 md:p-6";
+    "relative bg-gradient-to-br from-[#050816] via-[#0a0f2a] to-black border border-yellow-500/20 rounded-2xl p-6 shadow-xl hover:shadow-yellow-500/10 transition-all duration-300 backdrop-blur-sm";
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col md:flex-row">
-      {/* SIDEBAR */}
+    <div className="min-h-screen bg-gradient-to-br from-black via-[#050816] to-[#0a0f2a] text-white flex">
+      {/* ================= SIDEBAR ================= */}
+
       <motion.aside
-        animate={{ width: collapsed ? 80 : 240 }}
-        className="w-full md:w-auto bg-zinc-950 border-b md:border-b-0 md:border-r border-yellow-600/20 p-4 md:p-6 flex md:flex-col justify-between"
+        animate={{ width: collapsed ? 80 : 250 }}
+        className="bg-gradient-to-b from-black via-[#050816] to-[#0a0f2a] border-r border-yellow-500/20 p-6 flex flex-col justify-between"
       >
-        <div className="w-full">
+        <div>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="mb-4 md:mb-10 text-yellow-500"
+            className="mb-10 text-yellow-500 hover:text-yellow-400 transition"
           >
             <Menu />
           </button>
 
           {!collapsed && (
-            <>
-              <h1 className="text-yellow-500 text-lg md:text-xl font-bold mb-6 tracking-widest">
-                APU'S BAR
-              </h1>
-
-              <nav className="flex md:flex-col gap-4 md:space-y-4 text-gray-400 text-sm md:text-base">
+            <nav className="space-y-4 text-gray-400">
+              {menuItems.map((item) => (
                 <button
-                  onClick={() => setActiveView("dashboard")}
-                  className="text-left px-3 py-2 rounded-xl hover:text-yellow-400 transition-colors"
+                  key={item.key}
+                  onClick={() => setActiveView(item.key)}
+                  className={`block w-full text-left px-4 py-3 rounded-xl text-lg transition-all ${
+                    activeView === item.key
+                      ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/30"
+                      : "hover:text-yellow-400 hover:bg-white/5"
+                  }`}
                 >
-                  Dashboard
+                  {item.label}
                 </button>
-
-                <button
-                  onClick={() => setActiveView("inventario")}
-                  className="text-left px-3 py-2 rounded-xl hover:text-yellow-400 transition-colors"
-                >
-                  Inventario
-                </button>
-
-                <button className="text-left px-3 py-2 rounded-xl hover:text-yellow-400 transition-colors">
-                  Ventas
-                </button>
-
-                <button className="text-left px-3 py-2 rounded-xl hover:text-yellow-400 transition-colors">
-                  Empleados
-                </button>
-              </nav>
-            </>
+              ))}
+            </nav>
           )}
         </div>
+
+        {!collapsed && (
+          <div className="border-t border-yellow-500/20 pt-6">
+            <button
+              onClick={() => setActiveView("configuracion")}
+              className="w-full flex items-center gap-3 bg-[#0a0f2a] p-3 rounded-xl border border-yellow-500/20 hover:border-yellow-500/40 transition"
+            >
+              <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">
+                N
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-yellow-400">Nicolás</p>
+                <p className="text-xs text-gray-400">Administrador</p>
+              </div>
+            </button>
+          </div>
+        )}
       </motion.aside>
 
-      {/* MAIN */}
-      <main className="flex-1 p-4 sm:p-6 md:p-12">
-        {activeView === "dashboard" && (
-          <>
-            <h2 className="text-xl sm:text-2xl md:text-4xl font-bold text-yellow-500 mb-8 md:mb-14">
-              Dashboard
-            </h2>
+      {/* ================= MAIN ================= */}
 
-            {/* STATS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-              {/* VENTAS */}
-              <div className={cardStyle}>
-                <p className="text-gray-400 text-sm flex items-center gap-2">
-                  Ventas en Vivo
-                  <Activity className="text-green-400" size={16} />
-                </p>
-                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-green-400 mt-2">
-                  $<Counter value={sales} />
-                </p>
-              </div>
+      <main className="flex-1 p-12 space-y-12">
+        <AnimatePresence mode="wait">
+          {activeView === "dashboard" && (
+            <motion.div
+              key="dashboard"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -40 }}
+              transition={{ duration: 0.3 }}
+            >
+              <h2 className="text-4xl font-bold text-yellow-500 tracking-wide mb-12">
+                Dashboard
+              </h2>
 
-              {/* TOP BEBIDAS */}
-              <div className={cardStyle}>
-                <p className="text-gray-400 text-sm mb-3">
-                  Bebidas Más Vendidas
-                </p>
-                <div className="space-y-2 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-14">
+                <div
+                  className={cardStyle}
+                  onClick={() => setActiveView("ventas")}
+                >
+                  <p className="text-gray-400 flex items-center gap-2">
+                    Ventas en Vivo
+                    <Activity className="text-green-400" size={16} />
+                  </p>
+                  <p className="text-3xl font-bold text-green-400 mt-3">
+                    $<Counter value={sales} />
+                  </p>
+                </div>
+
+                <div className={cardStyle}>
+                  <p className="text-gray-400 mb-4">Top Bebidas</p>
                   {topDrinks.map((drink, index) => (
-                    <div key={drink.name} className="flex justify-between">
-                      <span className="text-yellow-400 truncate">
+                    <div
+                      key={drink.name}
+                      className="flex justify-between text-sm mb-2"
+                    >
+                      <span className="text-purple-400">
                         {index + 1}. {drink.name}
                       </span>
-                      <span className="text-purple-400">
-                        {drink.sold} ventas
-                      </span>
+                      <span className="text-yellow-400">{drink.sold}</span>
                     </div>
                   ))}
                 </div>
-              </div>
 
-              {/* ALERTAS */}
-              <div className={cardStyle}>
-                <p className="text-gray-400 text-sm">Alertas</p>
-                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-yellow-500 mt-2">
-                  {lowStockProducts.length}
-                </p>
-
-                <div className="mt-4 h-8 overflow-hidden">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={currentAlert}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.3 }}
-                      className={`text-sm font-medium ${getSeverity(
-                        currentProduct.stock,
-                      )}`}
-                    >
-                      {currentProduct.name} ({currentProduct.stock} en stock)
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-              </div>
-            </div>
-
-            {/* CHART */}
-            <div className={`${cardStyle} mb-12`}>
-              <h3 className="text-yellow-500 text-lg font-semibold mb-6">
-                Ventas
-              </h3>
-              <DashboardChart />
-            </div>
-
-            {/* TABLA ÓRDENES */}
-            <div className={cardStyle}>
-              <h3 className="text-yellow-500 text-lg font-semibold mb-8">
-                Órdenes Activas
-              </h3>
-
-              <div className="grid grid-cols-5 text-gray-500 border-b border-yellow-600/20 pb-4 mb-4 text-sm">
-                <span>Mesa</span>
-                <span>Mesero</span>
-                <span>Método</span>
-                <span>Total</span>
-                <span>Estado</span>
-              </div>
-
-              {orders.map((order, i) => (
                 <div
-                  key={i}
-                  className="grid grid-cols-5 py-4 border-b border-white/5 text-sm"
+                  className={cardStyle}
+                  onClick={() => setActiveView("inventario")}
                 >
-                  <span>{order.mesa}</span>
-                  <span>{order.mesero}</span>
-                  <span>{order.metodo}</span>
-                  <span className="text-green-400 font-semibold">
-                    ${order.total.toLocaleString()}
-                  </span>
-                  <span
-                    className={`flex items-center gap-2 ${statusColor[order.status]}`}
-                  >
-                    {statusIcon[order.status]}
-                    {order.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+                  <p className="text-gray-400">Alertas</p>
+                  <p className="text-3xl font-bold text-yellow-500 mt-3">
+                    {lowStockProducts.length}
+                  </p>
 
-        {activeView === "inventario" && <InventarioView />}
+                  <motion.div
+                    key={currentAlert}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={`mt-4 text-sm ${getSeverity(
+                      currentProduct.stock,
+                    )}`}
+                  >
+                    {currentProduct.name} ({currentProduct.stock})
+                  </motion.div>
+                </div>
+              </div>
+
+              <div className={`${cardStyle} mb-14`}>
+                <h3 className="text-yellow-500 text-lg mb-6">
+                  Rendimiento de Ventas
+                </h3>
+                <DashboardChart />
+              </div>
+
+              <div className={cardStyle}>
+                <h3 className="text-yellow-500 text-lg mb-8">
+                  Órdenes Activas
+                </h3>
+
+                {orders.map((order, i) => (
+                  <div
+                    key={i}
+                    className="flex justify-between items-center py-3 border-b border-yellow-500/10 text-sm"
+                  >
+                    <span>Mesa {order.mesa}</span>
+                    <span>{order.mesero}</span>
+                    <span>{order.metodo}</span>
+                    <span className="text-green-400 font-semibold">
+                      ${order.total.toLocaleString("es-CO")}
+                    </span>
+                    <span
+                      className={`flex items-center gap-2 ${statusColor[order.status]}`}
+                    >
+                      {statusIcon[order.status]}
+                      {order.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {activeView === "inventario" && <InventarioView />}
+          {activeView === "ventas" && <VentasDetalle />}
+          {activeView === "empleados" && <EmpleadosView />}
+          {activeView === "configuracion" && <ConfiguracionView />}
+        </AnimatePresence>
       </main>
     </div>
   );
