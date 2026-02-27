@@ -1,37 +1,20 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { UserPlus, Pencil, Trash2, Users, DollarSign } from "lucide-react";
 import EditEmpleadosModal from "./EditEmpleadosModal";
 import Swal from "sweetalert2";
+import { getEmpleados } from "../hooks/empleados";
 
 export default function EmpleadosView() {
-  const [empleados, setEmpleados] = useState([
-    {
-      id: 1,
-      nombre: "Natalia",
-      telefono: "3006723144",
-      oficio: "Mesera",
-      fecha: "24/12/2000",
-      salario: 2000000,
-    },
-    {
-      id: 2,
-      nombre: "Carlos",
-      telefono: "3015557788",
-      oficio: "Bartender",
-      fecha: "15/08/1998",
-      salario: 2500000,
-    },
-  ]);
-
+  const [empleados, setEmpleados] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [empleadoEditar, setEmpleadoEditar] = useState(null);
-
-  const totalNomina = useMemo(() => {
-    return empleados.reduce((acc, emp) => acc + Number(emp.salario), 0);
-  }, [empleados]);
+  const totalNomina = 15500;
+  // const totalNomina = useMemo(() => {
+  //   return empleados.reduce((acc, emp) => acc + Number(emp.salario), 0);
+  // }, [empleados]);
 
   const cardStyle =
     "bg-gradient-to-br from-black via-[#050816] to-[#0a0f2a] border border-yellow-500/30 rounded-2xl p-6 shadow-lg hover:shadow-yellow-500/20 transition-all duration-300";
@@ -73,29 +56,41 @@ export default function EmpleadosView() {
     });
   };
 
-  const guardarEmpleado = (nuevoEmpleado) => {
-    if (empleadoEditar) {
-      // EDITAR
-      setEmpleados((prev) =>
-        prev.map((emp) =>
-          emp.id === empleadoEditar.id ? { ...emp, ...nuevoEmpleado } : emp,
-        ),
-      );
-    } else {
-      // AGREGAR
-      setEmpleados((prev) => [
-        ...prev,
-        {
-          ...nuevoEmpleado,
-          id: Date.now(),
-          salario: Number(nuevoEmpleado.salario),
-        },
-      ]);
-    }
+  // const guardarEmpleado = (nuevoEmpleado) => {
+  //   if (empleadoEditar) {
+  //     // EDITAR
+  //     setEmpleados((prev) =>
+  //       prev.map((emp) =>
+  //         emp.id === empleadoEditar.id ? { ...emp, ...nuevoEmpleado } : emp,
+  //       ),
+  //     );
+  //   } else {
+  //     // AGREGAR
+  //     setEmpleados((prev) => [
+  //       ...prev,
+  //       {
+  //         ...nuevoEmpleado,
+  //         id: Date.now(),
+  //         salario: Number(nuevoEmpleado.salario),
+  //       },
+  //     ]);
+  //   }
 
-    setModalOpen(false);
-    setEmpleadoEditar(null);
-  };
+  //   setModalOpen(false);
+  //   setEmpleadoEditar(null);
+  // };
+
+  useEffect(() => {
+    const cargarEmpleados = async () => {
+      try {
+        const result = await getEmpleados();
+        setEmpleados(result);
+      } catch (error) {
+        return error;
+      }
+    };
+    cargarEmpleados();
+  }, []);
 
   return (
     <motion.div
@@ -161,10 +156,12 @@ export default function EmpleadosView() {
             key={emp.id}
             className="grid grid-cols-6 py-4 border-b border-yellow-500/10 text-sm hover:bg-white/5 transition-colors"
           >
-            <span className="text-yellow-400 font-medium">{emp.nombre}</span>
-            <span>{emp.telefono}</span>
-            <span className="text-purple-400">{emp.oficio}</span>
-            <span>{emp.fecha}</span>
+            <span className="text-yellow-400 font-medium">
+              {emp.first_name}
+            </span>
+            <span>{emp.telephone_number}</span>
+            <span className="text-purple-400">{emp.role_name}</span>
+            <span>{emp.date_joined.split("T")[0]}</span>
             <span className="text-green-400 font-semibold">
               ${Number(emp.salario).toLocaleString("es-CO")}
             </span>
@@ -181,7 +178,7 @@ export default function EmpleadosView() {
               </button>
 
               <button
-                onClick={() => eliminarEmpleado(emp.id, emp.nombre)}
+                onClick={() => eliminarEmpleado(emp.id, emp.first_name)}
                 className="text-red-500 hover:text-red-400 transition"
               >
                 <Trash2 size={16} />
@@ -198,7 +195,6 @@ export default function EmpleadosView() {
           setModalOpen(false);
           setEmpleadoEditar(null);
         }}
-        onSave={guardarEmpleado}
         empleadoEditar={empleadoEditar}
       />
     </motion.div>

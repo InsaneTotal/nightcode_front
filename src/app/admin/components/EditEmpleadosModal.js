@@ -2,26 +2,14 @@
 import { useState, useEffect } from "react";
 import { fetchDocumentTypes } from "../../admin/hooks/typeDocument";
 import { fetchRoles } from "../../admin/hooks/roles";
+import { createEmpleado, updateEmpleado } from "../hooks/empleados";
 
-export default function EmpleadoModal({
-  isOpen,
-  onClose,
-  onSave,
-  empleadoEditar,
-}) {
-  const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
-    phone: "",
-    id_type_document: "",
-    document: "",
-    email: "",
-    password: "",
-    confirm_password: "",
-    id_rol: "",
-  });
+export default function EmpleadoModal({ isOpen, onClose, empleadoEditar }) {
   const [docTypes, setDocTypes] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [formData, setFormData] = useState({});
+  const [error, setError] = useState("");
+  const [hidePassword, setHidePassword] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -50,35 +38,68 @@ export default function EmpleadoModal({
     };
   }, []);
 
-  const getInitialForm = (empleado) =>
-    empleado || {
-      first_name: "",
-      last_name: "",
-      phone: "",
-      id_type_document: "",
-      document: "",
-      email: "",
-      password: "",
-      confirm_password: "",
-      id_rol: "",
-    };
-
   useEffect(() => {
-    setForm(getInitialForm(empleadoEditar));
+    if (empleadoEditar) {
+      setHidePassword(true);
+    } else {
+      setHidePassword(false);
+    }
   }, [empleadoEditar]);
+  // const getInitialForm = (empleado) =>
+  //   empleado || {
+  //     first_name: "",
+  //     last_name: "",
+  //     phone: "",
+  //     id_type_document: "",
+  //     document: "",
+  //     email: "",
+  //     password: "",
+  //     confirm_password: "",
+  //     id_rol: "",
+  //   };
+
+  // useEffect(() => {
+  //   setForm(getInitialForm(empleadoEditar));
+  // }, [empleadoEditar]);
 
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(form);
-    onClose();
+    setError("");
+    const formToSend = {
+      ...formData,
+      username: formData.email,
+      // is_active: true,
+    };
+    delete formToSend.confirm_password;
+    try {
+      if (empleadoEditar) {
+        const result = await updateEmpleado(empleadoEditar.id, formToSend);
+        if (!result || result.error) {
+          setError(
+            "Error al actualizar el empleado. Por favor, intente nuevamente.",
+          );
+          return error;
+        }
+      } else {
+        const result = await createEmpleado(formToSend);
+        if (!result || result.error) {
+          console.log(formToSend);
+          setError(
+            "Error al crear el empleado. Por favor, intente nuevamente.",
+          );
+          return error;
+        }
+      }
+    } catch (error) {
+      setError("Error al guardar el empleado. Por favor, intente nuevamente.");
+    }
   };
-
   return (
     // <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
     //   <div className="bg-black border border-yellow-500/40 rounded-xl p-6 w-[400px] shadow-2xl">
@@ -167,6 +188,11 @@ export default function EmpleadoModal({
               name="first_name"
               onChange={handleChange}
               className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              value={
+                empleadoEditar
+                  ? empleadoEditar.first_name
+                  : formData.first_name || ""
+              }
               placeholder="Nombre"
             />
           </div>
@@ -181,6 +207,11 @@ export default function EmpleadoModal({
               name="last_name"
               onChange={handleChange}
               className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              value={
+                empleadoEditar
+                  ? empleadoEditar.last_name
+                  : formData.last_name || ""
+              }
               placeholder="Apellido"
             />
           </div>
@@ -192,9 +223,14 @@ export default function EmpleadoModal({
             </label>
             <input
               type="text"
-              name="phone"
+              name="telephone_number"
               onChange={handleChange}
               className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              value={
+                empleadoEditar
+                  ? empleadoEditar.telephone_number
+                  : formData.telephone_number || ""
+              }
               placeholder="Teléfono"
             />
           </div>
@@ -208,6 +244,11 @@ export default function EmpleadoModal({
               name="id_type_document"
               onChange={handleChange}
               className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              value={
+                empleadoEditar
+                  ? empleadoEditar.id_type_document
+                  : formData.id_type_document || ""
+              }
             >
               <option value="">Seleccione el tipo de documento</option>
               {docTypes.map((type) => (
@@ -225,9 +266,14 @@ export default function EmpleadoModal({
             </label>
             <input
               type="text"
-              name="document"
+              name="document_number"
               onChange={handleChange}
               className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              value={
+                empleadoEditar
+                  ? empleadoEditar.document_number
+                  : formData.document_number || ""
+              }
               placeholder="Número de Documento"
             />
           </div>
@@ -242,47 +288,53 @@ export default function EmpleadoModal({
               name="email"
               onChange={handleChange}
               className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              value={
+                empleadoEditar ? empleadoEditar.email : formData.email || ""
+              }
               placeholder="Email"
             />
           </div>
+          {!hidePassword && (
+            <>
+              {/* CONTRASEÑA */}
+              <div>
+                <label className="text-sm">
+                  Contraseña <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  onChange={handleChange}
+                  className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  placeholder="Contraseña"
+                />
+              </div>
 
-          {/* CONTRASEÑA */}
-          <div>
-            <label className="text-sm">
-              Contraseña <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              name="password"
-              onChange={handleChange}
-              className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
-              placeholder="Contraseña"
-            />
-          </div>
-
-          {/* CONFIRMAR CONTRASEÑA */}
-          <div>
-            <label className="text-sm">
-              Confirmar Contraseña <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              name="confirm_password"
-              onChange={handleChange}
-              className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
-              placeholder="Confirmar Contraseña"
-            />
-          </div>
-
+              {/* CONFIRMAR CONTRASEÑA */}
+              <div>
+                <label className="text-sm">
+                  Confirmar Contraseña <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  name="confirm_password"
+                  onChange={handleChange}
+                  className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  placeholder="Confirmar Contraseña"
+                />
+              </div>
+            </>
+          )}
           {/* ROL */}
           <div className="md:col-span-2">
             <label className="text-sm">
               Rol <span className="text-red-500">*</span>
             </label>
             <select
-              name="id_rol"
+              name="id_role"
               onChange={handleChange}
               className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              // value={formData.id_role || ""}
             >
               <option value="">Seleccione el rol</option>
               {roles.map((rol) => (
@@ -296,6 +348,7 @@ export default function EmpleadoModal({
           {/* BOTÓN */}
           <div className="md:col-span-2 flex justify-center mt-4">
             <button
+              type="button"
               onClick={onClose}
               className="bg-[#4b2c4f] border border-yellow-500 
                  text-white mr-4 px-8 py-2 rounded-full 
@@ -315,6 +368,9 @@ export default function EmpleadoModal({
               Guardar
             </button>
           </div>
+          {error && (
+            <p className="text-center text-red-500 text-sm pt-2">{error}</p>
+          )}
         </form>
       </div>
     </div>
