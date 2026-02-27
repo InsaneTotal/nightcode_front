@@ -13,6 +13,6 @@ export async function fetchRoles() {
     const data = await response.json();
     return data;
   } catch (error) {
-    return error;
+    return [];
   }
 }
