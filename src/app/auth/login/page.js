@@ -29,17 +29,20 @@ export default function Login() {
     } else {
       // console.log(result);
       if (result.id_role === 1) {
-        localStorage.setItem("token", result.access);
+        localStorage.setItem("access", result.access);
+        localStorage.setItem("refresh", result.refresh);
         router.push("/admin/dashboard");
       }
 
       if (result.id_role === 2) {
-        localStorage.setItem("token", result.access);
+        localStorage.setItem("access", result.access);
+        localStorage.setItem("refresh", result.refresh);
         router.push("/order/waitress");
       }
 
       if (result.id_role === 3) {
-        localStorage.setItem("token", result.access);
+        localStorage.setItem("access", result.access);
+        localStorage.setItem("refresh", result.refresh);
         router.push("/kitchen/dashboard");
       }
     }

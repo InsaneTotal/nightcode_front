@@ -136,12 +136,12 @@ export default function DashboardPage() {
     "relative bg-gradient-to-br from-[#050816] via-[#0a0f2a] to-black border border-yellow-500/20 rounded-2xl p-6 shadow-xl hover:shadow-yellow-500/10 transition-all duration-300 backdrop-blur-sm";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-[#050816] to-[#0a0f2a] text-white flex">
+    <div className="min-h-screen bg-linear-to-br from-black via-[#050816] to-[#0a0f2a] text-white flex">
       {/* ================= SIDEBAR ================= */}
 
       <motion.aside
         animate={{ width: collapsed ? 80 : 250 }}
-        className="bg-gradient-to-b from-black via-[#050816] to-[#0a0f2a] border-r border-yellow-500/20 p-6 flex flex-col justify-between"
+        className="bg-linear-to-b from-black via-[#050816] to-[#0a0f2a] border-r border-yellow-500/20 p-6 flex flex-col justify-between"
       >
         <div>
           <button
