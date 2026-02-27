@@ -2,15 +2,47 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { loginUser } from "./hooks/loginLogic";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
+  const router = useRouter();
   const [formData, setFormData] = useState({});
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    const result = await loginUser(formData);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      // console.log(result);
+      if (result.id_role === 1) {
+        localStorage.setItem("token", result.access);
+        router.push("/admin/dashboard");
+      }
+
+      if (result.id_role === 2) {
+        localStorage.setItem("token", result.access);
+        router.push("/order/waitress");
+      }
+
+      if (result.id_role === 3) {
+        localStorage.setItem("token", result.access);
+        router.push("/kitchen/dashboard");
+      }
+    }
   };
 
   return (
@@ -39,7 +71,7 @@ export default function Login() {
 
         {/* FORM LOGIN */}
         <div
-          className="bg-gradient-to-br from-[#4b2c4f] to-[#2e1b30] 
+          className="bg-linear-to-br from-[#4b2c4f] to-[#2e1b30] 
           w-full max-w-lg rounded-[40px] 
           shadow-[0_0_40px_rgba(255,204,0,0.4)] 
           p-8 text-white mt-6"
@@ -48,7 +80,7 @@ export default function Login() {
             Iniciar Sesión
           </h2>
 
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             {/* EMAIL */}
             <div>
               <label className="text-sm">
@@ -83,10 +115,16 @@ export default function Login() {
                 text-white px-8 py-2 rounded-full 
                 hover:bg-yellow-500 hover:text-black 
                 transition duration-300"
+                disabled={loading}
               >
-                Ingresar
+                {loading ? "Ingresando..." : "Ingresar"}
               </button>
             </div>
+
+            {/* ERROR */}
+            {error && (
+              <p className="text-center text-red-500 text-sm pt-2">{error}</p>
+            )}
 
             {/* LINK REGISTER */}
             <p className="text-center text-sm text-gray-400 pt-4">
