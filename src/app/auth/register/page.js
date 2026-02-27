@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { fetchDocumentTypes } from "./hooks/typeDocument";
 import { fetchRoles } from "./hooks/roles";
 import Image from "next/image";
@@ -187,11 +187,11 @@ export default function Register() {
                 className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
               >
                 <option value="">Seleccione el rol</option>
-                {roles.map((rol) => {
+                {roles.map((rol) => (
                   <option key={rol.id} value={rol.id}>
                     {rol.name}
-                  </option>;
-                })}
+                  </option>
+                ))}
               </select>
             </div>
 
