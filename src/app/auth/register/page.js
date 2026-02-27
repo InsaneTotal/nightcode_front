@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { fetchDocumentTypes } from "./hooks/typeDocument";
-import { fetchRoles } from "./hooks/roles";
+import { fetchDocumentTypes } from "../../admin/hooks/typeDocument";
+import { fetchRoles } from "../../admin/hooks/roles";
 import Image from "next/image";
 
 export default function Register() {
   const [formData, setFormData] = useState({});
-  const [docTypes, setDocTypes] = useState([]);
-  const [roles, setRoles] = useState([]);
 
   const handleChange = (e) => {
     setFormData({
