@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Plus, Minus, Upload } from "lucide-react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
 
@@ -142,7 +143,7 @@ export default function EditInventarioModal({ product, onClose, onSave }) {
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.2 }}
-        className="w-full max-w-4xl bg-gradient-to-br from-zinc-900 via-zinc-950 to-black border border-yellow-600/30 rounded-2xl p-8 relative"
+        className="w-full max-w-4xl bg-linear-to-br from-zinc-900 via-zinc-950 to-black border border-yellow-600/30 rounded-2xl p-8 relative"
       >
         {/* CLOSE */}
         <button
@@ -156,7 +157,7 @@ export default function EditInventarioModal({ product, onClose, onSave }) {
           {/* IMAGE */}
           <div className="flex flex-col items-center gap-4">
             <div className="w-64 h-72 bg-zinc-900 border border-yellow-600/20 rounded-xl flex items-center justify-center">
-              <img
+              <Image
                 src={image}
                 alt={product.name}
                 className="h-56 object-contain"
