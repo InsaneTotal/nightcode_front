@@ -1,39 +1,52 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Pencil } from "lucide-react";
+import { getInventory } from "../hooks/inventory";
 import EditInventarioModal from "./editInventarioModal"; // 👈 IMPORT
 
 export default function InventarioView() {
   const [search, setSearch] = useState("");
+  const [products, setProducts] = useState([]);
 
+  useEffect(() => {
+    const loadInventory = async () => {
+      try {
+        const inventoryData = await getInventory();
+        setProducts(inventoryData);
+      } catch (error) {
+        console.error("Error loading inventory:", error);
+      }
+    }
+    loadInventory();
+  }, []);
   // 🔥 Ahora products es estado (antes era const normal)
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: "Poker Pipona",
-      quantity: 6,
-      price: 5600,
-      image: "/cervezas/poker.png",
-      description: "Cerveza Poker Pipona 500ml",
-    },
-    {
-      id: 2,
-      name: "Cerveza Poker Vidrio",
-      quantity: 180,
-      price: 3500,
-      image: "/cervezas/cerveza_poker_vidrio.jpg",
-      description: "Cerveza Poker Vidrio 500ml",
-    },
-    {
-      id: 3,
-      name: "Cerveza Heineken",
-      quantity: 120,
-      price: 4200,
-      image: "/heineken.png",
-      description: "Cerveza Heineken 500ml",
-    },
-  ]);
+  // const [products, setProducts] = useState([
+  //   {
+  //     id: 1,
+  //     name: "Poker Pipona",
+  //     quantity: 6,
+  //     price: 5600,
+  //     image: "/cervezas/poker.png",
+  //     description: "Cerveza Poker Pipona 500ml",
+  //   },
+  //   {
+  //     id: 2,
+  //     name: "Cerveza Poker Vidrio",
+  //     quantity: 180,
+  //     price: 3500,
+  //     image: "/cervezas/cerveza_poker_vidrio.jpg",
+  //     description: "Cerveza Poker Vidrio 500ml",
+  //   },
+  //   {
+  //     id: 3,
+  //     name: "Cerveza Heineken",
+  //     quantity: 120,
+  //     price: 4200,
+  //     image: "/heineken.png",
+  //     description: "Cerveza Heineken 500ml",
+  //   },
+  // ]);
 
   // 🔥 Producto seleccionado para editar
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -73,7 +86,7 @@ export default function InventarioView() {
       </div>
 
       <div className="space-y-8">
-        {filteredProducts.map((product) => (
+        {products.map((product) => (
           <div
             key={product.id}
             className={`${cardStyle} flex flex-col md:flex-row md:items-center md:justify-between gap-6`}
@@ -81,7 +94,7 @@ export default function InventarioView() {
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="w-40 h-48 bg-zinc-900 border border-yellow-600/20 rounded-xl flex items-center justify-center">
                 <img
-                  src={product.image}
+                  src={product.url_img}
                   alt={product.name}
                   className="h-40 object-contain"
                 />
