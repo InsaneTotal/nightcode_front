@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Building2, Shield, Settings2, LogOut, Save } from "lucide-react";
 import { useState } from "react";
@@ -88,7 +89,7 @@ export default function ConfiguracionView() {
               </label>
 
               <div className="flex items-center gap-4 mt-3">
-                <img
+                <Image
                   src={form.logo}
                   alt="Logo"
                   className="w-14 h-14 object-contain bg-[#111827] rounded-xl p-2"
