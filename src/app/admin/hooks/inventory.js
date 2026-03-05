@@ -1,10 +1,10 @@
 export async function getInventory() {
     const response = await fetch("http://localhost:8000/api/authinventory/drinks/",
-// {method: "GET",
-// headers: {
-//     authorization: `Bearer ${localStorage.getItem("token")}`,
-// }}
-    )
+       {method: "GET",
+            headers: {
+                authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+        })
 
     if (!response.ok) {
         throw new Error("Failed to fetch inventory")
@@ -15,18 +15,22 @@ export async function getInventory() {
 }
 
 
-export async function updateInventoryItem() {
-    const response = await fetch("http://localhost:8000/api/authinventory/drinks/", {
-        method: "PUT",
-        headers: {
-            authorization: `Bearer ${localStorage.getItem("token")}`,
+export async function updateInventory(id, updatedData) {
+    const response = await fetch(
+        `http://localhost:8000/api/authinventory/drinks/${id}/`,
+        {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(updatedData),
         }
-    })
+    )
 
     if (!response.ok) {
-        throw new Error("Failed to update inventory item")
+        throw new Error("Failed to update inventory")
     }
+
     const data = await response.json()
     return data
-
 }
