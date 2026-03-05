@@ -16,6 +16,7 @@ import InventarioView from "../components/inventarioView";
 import VentasDetalle from "../components/ventasView";
 import EmpleadosView from "../components/empleadosView";
 import ConfiguracionView from "../components/configuracionView";
+import ProtectedRoute from "../../../routes/protectedRoutes";
 
 /* ================= COUNTER ================= */
 
@@ -64,11 +65,14 @@ export default function DashboardPage() {
     return [...drinks].sort((a, b) => b.sold - a.sold).slice(0, 3);
   }, [drinks]);
 
-  const lowStockProducts = [
-    { name: "Cerveza Poker", stock: 2 },
-    { name: "Ron Medellín", stock: 1 },
-    { name: "Tequila José Cuervo", stock: 3 },
-  ];
+  const lowStockProducts = useMemo(
+    () => [
+      { name: "Cerveza Poker", stock: 2 },
+      { name: "Ron Medellín", stock: 1 },
+      { name: "Tequila José Cuervo", stock: 3 },
+    ],
+    [],
+  );
 
   const currentProduct =
     lowStockProducts[currentAlert % lowStockProducts.length];
@@ -80,7 +84,7 @@ export default function DashboardPage() {
       );
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [lowStockProducts.length]);
 
   const getSeverity = (stock) => {
     if (stock === 1) return "text-red-500";
@@ -136,7 +140,8 @@ export default function DashboardPage() {
     "relative bg-gradient-to-br from-[#050816] via-[#0a0f2a] to-black border border-yellow-500/20 rounded-2xl p-6 shadow-xl hover:shadow-yellow-500/10 transition-all duration-300 backdrop-blur-sm";
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-black via-[#050816] to-[#0a0f2a] text-white flex">
+    <ProtectedRoute allowedRoles={["1"]}>
+      <div className="min-h-screen bg-linear-to-br from-black via-[#050816] to-[#0a0f2a] text-white flex">
       {/* ================= SIDEBAR ================= */}
 
       <motion.aside
@@ -296,6 +301,7 @@ export default function DashboardPage() {
           {activeView === "configuracion" && <ConfiguracionView />}
         </AnimatePresence>
       </main>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
