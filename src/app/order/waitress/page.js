@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PedidoModal from "./components/modalAdd";
@@ -8,6 +8,10 @@ import ModalPago from "./components/modalPay";
 import ModalEditPedidos from "./components/modalEditPedidos.js";
 import { showModalConfirmation } from "./components/modalConfimation";
 import { mesasDB, productosDB } from "./data/dbfake";
+//---------------------------------------------------//
+import { getDrinkTables } from "./hook/drinkTables";
+import { getOrders } from "./hook/orders";
+import { payOrder } from "./hook/payOrder";
 
 export default function WaitressPage() {
   const [mesaActiva, setMesaActiva] = useState(null);
@@ -16,7 +20,60 @@ export default function WaitressPage() {
   const [openEditar, setOpenEditar] = useState(false);
   const [mesaEditando, setMesaEditando] = useState(null);
   const [filtro, setFiltro] = useState("Todas");
-  const [mesas, setMesas] = useState(mesasDB);
+  //---------------------------------------------------//
+  const [tables, setTables] = useState([]);
+
+  useEffect(() => {
+  const loadData = async () => {
+    try {
+      const tablesData = await getDrinkTables();
+      const ordersData = await getOrders();
+
+      const tablesWithOrders = tablesData.map((mesa) => {
+        const order = ordersData.find(
+          (o) => o.id_mesa === mesa.id && o.id_order_status !== 4
+        );
+
+        return {
+          ...mesa,
+          orderId: order?.id,
+          items: order // esto funciona para transformar los detalles del pedido en el formato que espera la UI
+            ? Object.values(
+                order.details.reduce((acc, detail) => {
+                  const nombre = detail.drink.name;
+                  const cantidad = Number(detail.quantity || detail.qty || detail.amount || 1);
+                  if (!acc[nombre]) {
+                    acc[nombre] = {
+                      nombre,
+                      precio: Number(detail.unit_price),
+                      cantidad: 0,
+                    };
+                  }
+
+                  acc[nombre].cantidad += cantidad;
+
+                  return acc;
+                }, {}),
+              )
+            : [],
+
+         color:
+            order && order.details.length > 0
+            ? "yellow"
+            : mesa.status === 1
+            ? "green"
+            : "red",
+        };
+      });
+
+      setTables(tablesWithOrders);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    }
+  };
+
+  loadData();
+}, []);
 
   const estados = ["Todas", "Libre", "En consumo", "Pendiente"];
 
@@ -47,11 +104,15 @@ export default function WaitressPage() {
   };
 
   const calcularTotal = (items) =>
-    items.reduce((acc, item) => acc + item.precio, 0);
+  items.reduce(
+    (acc, item) =>
+      acc + item.precio * (item.cantidad ? item.cantidad : 1),
+    0,
+  );
 
   // 🔥 AGREGAR PRODUCTOS
   const agregarProductosAMesa = (mesaId, productos) => {
-    setMesas((prev) =>
+    setTables((prev) =>
       prev.map((mesa) =>
         mesa.id === mesaId
           ? {
@@ -68,7 +129,7 @@ export default function WaitressPage() {
 
   // 🔥 ACTUALIZAR PEDIDO (desde editar)
   const actualizarPedidoMesa = (mesaId, nuevosProductos) => {
-    setMesas((prev) =>
+    setTables((prev) =>
       prev.map((mesa) =>
         mesa.id === mesaId
           ? {
@@ -87,7 +148,7 @@ export default function WaitressPage() {
 
   // 🔥 LIBERAR MESA
   const liberarMesa = (id) => {
-    setMesas((prev) =>
+    setTables((prev) =>
       prev.map((mesa) =>
         mesa.id === id
           ? {
@@ -102,6 +163,51 @@ export default function WaitressPage() {
     );
     setMesaActiva(null);
   };
+
+  // 🔥 CONFIRMAR PAGO
+const confirmarPago = async (metodoPago) => {
+  try {
+    console.log("Entró a confirmarPago");
+
+    if (!mesaActual) {
+      console.log("No hay mesa activa");
+      return;
+    }
+
+    console.log("Mesa actual:", mesaActual);
+    console.log("Order ID:", mesaActual.orderId);
+
+    const response = await fetch(
+      `http://127.0.0.1:8000/api/order/orders/${mesaActual.orderId}/`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id_payment: metodoPago,
+          id_order_status: 4,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("Response:", data);
+
+    if (!response.ok) {
+      console.error("Error del servidor:", data);
+      return;
+    }
+
+    //  pago fue correcto
+    liberarMesa(mesaActual.id);
+    setOpenPago(false);
+
+  } catch (error) {
+    console.error("Error al pagar:", error);
+  }
+};
 
   const abrirConfirmacionLiberar = (id) => {
     showModalConfirmation({
@@ -121,7 +227,7 @@ export default function WaitressPage() {
 
   // 🔥 OCUPAR
   const ocuparMesa = (id) => {
-    setMesas((prev) =>
+    setTables((prev) =>
       prev.map((mesa) =>
         mesa.id === id
           ? {
@@ -145,9 +251,16 @@ export default function WaitressPage() {
   };
 
   const mesasFiltradas =
-    filtro === "Todas" ? mesas : mesas.filter((m) => m.estado === filtro);
-
-  const mesaActual = mesas.find((m) => m.id === mesaActiva);
+    filtro === "Todas"
+      ? tables
+      : tables.filter((m) =>
+          filtro === "Libre"
+            ? m.color === "green"
+          : filtro === "En consumo"
+          ? m.color === "yellow"
+          : m.color === "red",
+        );
+  const mesaActual = tables.find((m) => m.id === mesaActiva);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-[#0b0b0b] to-black text-white px-4 pt-8 pb-32">
@@ -187,17 +300,21 @@ export default function WaitressPage() {
             >
               <div>
                 <h2 className="text-lg font-bold">Mesa {mesa.id}</h2>
-                <p className="text-xs text-gray-400">Pedido: {mesa.pedido}</p>
+                <p className="text-xs text-gray-400">Pedido: {mesa.name}</p>
               </div>
 
               <div className="flex items-center gap-3">
-                <span
-                  className={`px-2 py-1 rounded-full text-xs border ${getBadgeStyles(
-                    mesa.color,
-                  )}`}
-                >
-                  {mesa.estado}
-                </span>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs border ${getBadgeStyles(
+                      mesa.color,
+                    )}`}
+                  >
+                    {mesa.items.length > 0
+                      ? "En consumo"
+                      : mesa.status === 1
+                      ? "Libre"
+                      : "Pendiente"}
+                  </span>
 
                 <motion.div
                   animate={{ rotate: mesaActiva === mesa.id ? 180 : 0 }}
@@ -220,13 +337,21 @@ export default function WaitressPage() {
                       <p className="text-gray-400">No hay consumos activos</p>
                     ) : (
                       <>
-                        {mesa.items.map((item, i) => (
+                        {mesa.items.map((item, i) => ( //esto es lo que se muestra en el detalle del pedido
                           <div
                             key={i}
                             className="flex justify-between text-gray-300"
                           >
-                            <span>{item.nombre}</span>
-                            <span>${item.precio.toLocaleString()}</span>
+                            <span>
+                              {item.nombre} {item.cantidad ? `x${item.cantidad}` : ""}
+                            </span>
+
+                            <span>
+                              $
+                              {(
+                                item.precio * (item.cantidad ? item.cantidad : 1)
+                              ).toLocaleString()}
+                            </span>
                           </div>
                         ))}
 
@@ -325,14 +450,11 @@ export default function WaitressPage() {
       />
 
       <ModalPago
-        abierto={openPago}
+        abierto={openPago}      
         onClose={() => setOpenPago(false)}
         total={calcularTotal(mesaActual?.items || [])}
         descripcion="Pedido completo"
-        onConfirmarPago={() => {
-          if (mesaActual) liberarMesa(mesaActual.id);
-          setOpenPago(false);
-        }}
+        onConfirmarPago={confirmarPago}
       />
 
       <ModalEditPedidos

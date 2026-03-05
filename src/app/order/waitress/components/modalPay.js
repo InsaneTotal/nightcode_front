@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-
+import { getPayments } from "../hook/payOrder";
 export default function ModalPay({
   abierto,
   onClose,
@@ -12,6 +12,21 @@ export default function ModalPay({
   onConfirmarPago,
 }) {
   const [metodoPago, setMetodoPago] = useState("");
+  const [metodos, setMetodos] = useState([]);
+
+  useEffect(() => {
+  const cargarMetodos = async () => {
+    try {
+      const data = await getPayments();
+      setMetodos(data);
+    } catch (error) {
+      console.error("Error cargando métodos", error);
+    }
+  };
+
+  cargarMetodos();
+}, []);
+
 
   if (!abierto) return null;
 
@@ -73,20 +88,20 @@ export default function ModalPay({
             <p className="text-yellow-400 text-sm mb-3">Método de pago</p>
 
             <div className="space-y-3">
-              {["Efectivo", "Tarjeta", "Transferencia"].map((metodo) => (
+              {metodos.map((metodo) => (
                 <button
-                  key={metodo}
-                  onClick={() => setMetodoPago(metodo)}
+                  key={metodo.id}
+                  onClick={() => setMetodoPago(metodo.id)}
                   className={`
                     w-full py-3 rounded-2xl border transition-all duration-300
                     ${
-                      metodoPago === metodo
+                      metodoPago === metodo.id
                         ? "bg-purple-700 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]"
                         : "bg-zinc-900 border-yellow-700 hover:border-purple-600 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]"
                     }
                   `}
                 >
-                  {metodo}
+                  {metodo.name}
                 </button>
               ))}
             </div>
