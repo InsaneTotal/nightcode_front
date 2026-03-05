@@ -1,6 +1,6 @@
 export async function createEmpleado(user) {
   try {
-    const responde = await fetch("http://localhost:8000/api/authusers/users/", {
+    const response = await fetch("http://localhost:8000/api/authusers/users/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -8,12 +8,14 @@ export async function createEmpleado(user) {
       body: JSON.stringify(user),
     });
 
-    if (!responde.ok) {
+    if (!response.ok) {
       throw new Error("Error al guardar el usuario.");
     }
-
-    const data = await responde.json();
-    return data;
+    const message = {
+      process: "Empleado creado",
+      message: "Usuario creado exitosamente",
+    };
+    return message;
   } catch (error) {
     throw error;
   }
@@ -21,16 +23,26 @@ export async function createEmpleado(user) {
 
 export async function updateEmpleado(id, user) {
   try {
-    const responde = await fetch(
+    const response = await fetch(
       `http://localhost:8000/api/authusers/users/${id}/`,
       {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(user),
       },
     );
+
+    if (!response.ok) {
+      throw new Error("Error al actualizar el usuario.");
+    }
+
+    const message = {
+      process: "Empleado actualizado",
+      message: "Usuario actualizado exitosamente",
+    };
+    return message;
   } catch (error) {
     throw error;
   }
@@ -44,6 +56,27 @@ export async function getEmpleados() {
     }
     const data = await response.json();
     return data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function deleteEmpleado(id, empleado) {
+  try {
+    const response = await fetch(
+      `http://localhost:8000/api/authusers/users/${id}/deactivate/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...empleado, is_active: false }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Error al eliminar el empleado.");
+    }
   } catch (error) {
     throw error;
   }
