@@ -7,11 +7,12 @@ import PedidoModal from "./components/modalAdd";
 import ModalPago from "./components/modalPay";
 import ModalEditPedidos from "./components/modalEditPedidos.js";
 import { showModalConfirmation } from "./components/modalConfimation";
-import { mesasDB, productosDB } from "./data/dbfake";
+
 //---------------------------------------------------//
 import { getDrinkTables } from "./hook/drinkTables";
 import { getOrders } from "./hook/orders";
-import { payOrder } from "./hook/payOrder";
+import { getDrinks } from "./hook/drinks";
+import { useWaitressOrders } from "./hook/useWaitressOrders";
 
 export default function WaitressPage() {
   const [mesaActiva, setMesaActiva] = useState(null);
@@ -22,12 +23,25 @@ export default function WaitressPage() {
   const [filtro, setFiltro] = useState("Todas");
   //---------------------------------------------------//
   const [tables, setTables] = useState([]);
+  const [drinks, setDrinks] = useState([]);
+
+  const {
+    agregarProductosAMesa: hookAgregarProductos,
+    actualizarPedidoMesa: hookActualizarPedido,
+    liberarMesa: hookLiberarMesa,
+    confirmarPago: hookConfirmarPago,
+    ocuparMesa: hookOcuparMesa,
+    calcularTotal,
+  } = useWaitressOrders(setTables, setMesaActiva, setOpenPago);
 
   useEffect(() => {
   const loadData = async () => {
     try {
       const tablesData = await getDrinkTables();
       const ordersData = await getOrders();
+      const drinksData = await getDrinks();
+
+      setDrinks(drinksData);
 
       const tablesWithOrders = tablesData.map((mesa) => {
         const order = ordersData.find(
@@ -41,9 +55,11 @@ export default function WaitressPage() {
             ? Object.values(
                 order.details.reduce((acc, detail) => {
                   const nombre = detail.drink.name;
-                  const cantidad = Number(detail.quantity || detail.qty || detail.amount || 1);
+                  const id = detail.drink.id;
+                  const cantidad = Number(detail.amount || 1);
                   if (!acc[nombre]) {
                     acc[nombre] = {
+                      id: id,
                       nombre,
                       precio: Number(detail.unit_price),
                       cantidad: 0,
@@ -103,111 +119,16 @@ export default function WaitressPage() {
     }
   };
 
-  const calcularTotal = (items) =>
-  items.reduce(
-    (acc, item) =>
-      acc + item.precio * (item.cantidad ? item.cantidad : 1),
-    0,
-  );
+  // 🔥 WRAPPERS PARA FUNCIONES DEL HOOK
+  const agregarProductosAMesa = (mesaId, productos) => 
+    hookAgregarProductos(tables, mesaId, productos);
 
-  // 🔥 AGREGAR PRODUCTOS
-  const agregarProductosAMesa = (mesaId, productos) => {
-    setTables((prev) =>
-      prev.map((mesa) =>
-        mesa.id === mesaId
-          ? {
-              ...mesa,
-              items: [...mesa.items, ...productos],
-              estado: "En consumo",
-              color: "yellow",
-              pedido: "En consumo",
-            }
-          : mesa,
-      ),
-    );
-  };
+  const actualizarPedidoMesa = (mesaId, nuevosProductos) => 
+    hookActualizarPedido(tables, mesaId, nuevosProductos);
 
-  // 🔥 ACTUALIZAR PEDIDO (desde editar)
-  const actualizarPedidoMesa = (mesaId, nuevosProductos) => {
-    setTables((prev) =>
-      prev.map((mesa) =>
-        mesa.id === mesaId
-          ? {
-              ...mesa,
-              items: nuevosProductos,
-              estado: nuevosProductos.length ? "En consumo" : "Libre",
-              color: nuevosProductos.length ? "yellow" : "green",
-              pedido: nuevosProductos.length
-                ? "Pedido actualizado"
-                : "Sin pedido",
-            }
-          : mesa,
-      ),
-    );
-  };
+  const liberarMesa = (id) => hookLiberarMesa(tables, id);
 
-  // 🔥 LIBERAR MESA
-  const liberarMesa = (id) => {
-    setTables((prev) =>
-      prev.map((mesa) =>
-        mesa.id === id
-          ? {
-              ...mesa,
-              estado: "Libre",
-              color: "green",
-              pedido: "Sin pedido",
-              items: [],
-            }
-          : mesa,
-      ),
-    );
-    setMesaActiva(null);
-  };
-
-  // 🔥 CONFIRMAR PAGO
-const confirmarPago = async (metodoPago) => {
-  try {
-    console.log("Entró a confirmarPago");
-
-    if (!mesaActual) {
-      console.log("No hay mesa activa");
-      return;
-    }
-
-    console.log("Mesa actual:", mesaActual);
-    console.log("Order ID:", mesaActual.orderId);
-
-    const response = await fetch(
-      `http://127.0.0.1:8000/api/order/orders/${mesaActual.orderId}/`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id_payment: metodoPago,
-          id_order_status: 4,
-        }),
-      }
-    );
-
-    const data = await response.json();
-
-    console.log("Response:", data);
-
-    if (!response.ok) {
-      console.error("Error del servidor:", data);
-      return;
-    }
-
-    //  pago fue correcto
-    liberarMesa(mesaActual.id);
-    setOpenPago(false);
-
-  } catch (error) {
-    console.error("Error al pagar:", error);
-  }
-};
+  const confirmarPago = (metodoPago) => hookConfirmarPago(tables, metodoPago);
 
   const abrirConfirmacionLiberar = (id) => {
     showModalConfirmation({
@@ -225,22 +146,8 @@ const confirmarPago = async (metodoPago) => {
     });
   };
 
-  // 🔥 OCUPAR
-  const ocuparMesa = (id) => {
-    setTables((prev) =>
-      prev.map((mesa) =>
-        mesa.id === id
-          ? {
-              ...mesa,
-              estado: "En consumo",
-              color: "yellow",
-              pedido: "Nuevo pedido",
-            }
-          : mesa,
-      ),
-    );
-
-    setMesaActiva(id);
+  const ocuparMesa = async (id) => {
+    await hookOcuparMesa(tables, id);
     setOpenModal(true);
   };
 
@@ -337,7 +244,7 @@ const confirmarPago = async (metodoPago) => {
                       <p className="text-gray-400">No hay consumos activos</p>
                     ) : (
                       <>
-                        {mesa.items.map((item, i) => ( //esto es lo que se muestra en el detalle del pedido
+                        {mesa.items.map((item, i) => ( 
                           <div
                             key={i}
                             className="flex justify-between text-gray-300"
@@ -349,7 +256,7 @@ const confirmarPago = async (metodoPago) => {
                             <span>
                               $
                               {(
-                                item.precio * (item.cantidad ? item.cantidad : 1)
+                              Number(item.precio) * (item.cantidad ? item.cantidad : 1)
                               ).toLocaleString()}
                             </span>
                           </div>
@@ -445,7 +352,7 @@ const confirmarPago = async (metodoPago) => {
         isOpen={openModal}
         onClose={() => setOpenModal(false)}
         mesaId={mesaActual?.id}
-        productosDB={productosDB}
+        productosDB={drinks}
         onAgregarProductos={agregarProductosAMesa}
       />
 
@@ -461,7 +368,7 @@ const confirmarPago = async (metodoPago) => {
         isOpen={openEditar}
         onClose={() => setOpenEditar(false)}
         mesa={mesaEditando}
-        productosDB={productosDB}
+        productosDB={drinks}
         onGuardarCambios={actualizarPedidoMesa}
       />
     </div>
