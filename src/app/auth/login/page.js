@@ -31,17 +31,23 @@ export default function Login() {
       localStorage.setItem("id_role", role);
 
       if (role === "1") {
+        localStorage.setItem("accessToken", result.access);
+        localStorage.setItem("refreshToken", result.refresh);
         router.replace("/admin/dashboard");
         return;
       }
 
       if (role === "2") {
+        localStorage.setItem("accessToken", result.access);
+        localStorage.setItem("refreshToken", result.refresh);
         router.replace("/order/waitress");
         return;
       }
 
       if (role === "3") {
-        router.replace("/kitchen/dashboard");
+        localStorage.setItem("accessToken", result.access);
+        localStorage.setItem("refreshToken", result.refresh);
+        router.replace("/UnderBar");
         return;
       }
 

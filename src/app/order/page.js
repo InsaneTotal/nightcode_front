@@ -16,7 +16,7 @@ export default function MenuLicores() {
       setCurrentAd((prev) => (prev + 1) % ads.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [ads.length]);
 
   const toggleSection = (section) => {
     setOpenSection(openSection === section ? null : section);
@@ -56,7 +56,7 @@ export default function MenuLicores() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-[#0b0b0b] to-black text-white pb-32 px-4 pt-6">
+    <div className="min-h-screen bg-linear-to-br from-black via-[#0b0b0b] to-black text-white pb-32 px-4 pt-6">
       <div className="max-w-2xl mx-auto space-y-8">
         {/* 🔥 SLIDER PREMIUM */}
         <div className="relative h-48 rounded-3xl overflow-hidden shadow-[0_15px_50px_rgba(0,0,0,0.8)]">

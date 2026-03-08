@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Search, Pencil } from "lucide-react";
 import { getInventory } from "../hooks/inventory";
 import EditInventarioModal from "./editInventarioModal"; // 👈 IMPORT
+import Image from "next/image";
 
 export default function InventarioView() {
   const [search, setSearch] = useState("");
@@ -17,7 +18,7 @@ export default function InventarioView() {
       } catch (error) {
         console.error("Error loading inventory:", error);
       }
-    }
+    };
     loadInventory();
   }, []);
   // 🔥 Ahora products es estado (antes era const normal)
@@ -92,11 +93,13 @@ export default function InventarioView() {
             className={`${cardStyle} flex flex-col md:flex-row md:items-center md:justify-between gap-6`}
           >
             <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-40 h-48 bg-zinc-900 border border-yellow-600/20 rounded-xl flex items-center justify-center">
-                <img
+              <div className="w-40 h-40 min-w-40 bg-zinc-900 border border-yellow-600/20 rounded-xl flex items-center justify-center p-2">
+                <Image
                   src={product.url_img}
                   alt={product.name}
-                  className="h-40 object-contain"
+                  width={120}
+                  height={120}
+                  className="object-contain max-w-full max-h-full"
                 />
               </div>
 
@@ -113,10 +116,10 @@ export default function InventarioView() {
                   Cantidad:{" "}
                   <span
                     className={`font-semibold ${
-                      product.quantity <= 10 ? "text-red-500" : "text-white"
+                      product.amount <= 10 ? "text-red-500" : "text-white"
                     }`}
                   >
-                    {product.quantity}
+                    {product.amount}
                   </span>
                 </p>
 
