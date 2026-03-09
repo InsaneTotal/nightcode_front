@@ -1,10 +1,11 @@
+import { authFetch } from "../../../utils/authFetch";
+
 export async function getInventory() {
-  const response = await fetch(
+  const response = await authFetch(
     "http://localhost:8000/api/authinventory/drinks/",
     {
-      method: "GET",
       headers: {
-        authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
       },
     },
   );
@@ -18,7 +19,7 @@ export async function getInventory() {
 }
 
 export async function updateInventory(id, updatedData) {
-  const response = await fetch(
+  const response = await authFetch(
     `http://localhost:8000/api/authinventory/drinks/${id}/`,
     {
       method: "PATCH",

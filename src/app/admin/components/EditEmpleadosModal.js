@@ -8,7 +8,6 @@ export default function EmpleadoModal({
   isOpen,
   onClose,
   empleadoEditar,
-  onEmpleadoCreado,
   onSave,
   actualizarListaEmpleados,
 }) {
@@ -126,9 +125,9 @@ export default function EmpleadoModal({
         });
         onSave(result);
         actualizarListaEmpleados();
-        if (onEmpleadoCreado) {
-          await onEmpleadoCreado();
-        }
+        // if (onEmpleadoCreado) {
+        //   await onEmpleadoCreado();
+        // }
       }
     } catch (error) {
       setError("Error al guardar el empleado. Por favor, intente nuevamente.");

@@ -2,11 +2,23 @@
 
 import { useState, useMemo, useEffect, act } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, Pencil, Trash2, Users, DollarSign } from "lucide-react";
+import {
+  UserPlus,
+  Pencil,
+  Trash2,
+  Users,
+  DollarSign,
+  CheckIcon,
+} from "lucide-react";
 import EditEmpleadosModal from "./EditEmpleadosModal";
 import Swal from "sweetalert2";
-import { getEmpleados, deleteEmpleado } from "../hooks/empleados";
+import {
+  getEmpleados,
+  deleteEmpleado,
+  activateEmpleado,
+} from "../hooks/empleados";
 import { resolve } from "path";
+import AddButton from "../../components/AddButton";
 
 export default function EmpleadosView() {
   const [empleados, setEmpleados] = useState([]);
@@ -69,12 +81,6 @@ export default function EmpleadosView() {
           Swal.showValidationMessage(`${result.message}`);
         }
         resolve();
-        // return new Promise((resolve) => {
-        //   setTimeout(() => {
-        //     setEmpleados((prev) => prev.filter((emp) => emp.id !== id));
-        //     resolve();
-        //   }, 1000);
-        // });
       },
     }).then((result) => {
       if (result.isConfirmed) {
@@ -89,6 +95,25 @@ export default function EmpleadosView() {
         actualizarListaEmpleados();
       }
     });
+  };
+
+  const activarEmpleado = async (id, empleado) => {
+    try {
+      const result = await activateEmpleado(id, empleado);
+      if (result instanceof Error) {
+        throw result;
+      }
+      actualizarListaEmpleados();
+    } catch (error) {
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo activar el empleado.",
+        icon: "error",
+        confirmButtonColor: "#dc2626",
+        background: "#0a0f2a",
+        color: "#fff",
+      });
+    }
   };
 
   useEffect(() => {
@@ -117,16 +142,12 @@ export default function EmpleadosView() {
           Gestión de Empleados
         </h2>
 
-        <button
+        <AddButton
           onClick={() => {
             setEmpleadoEditar(null);
             setModalOpen(true);
           }}
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-xl text-sm font-medium transition"
-        >
-          <UserPlus size={18} />
-          Agregar
-        </button>
+        />
       </div>
 
       {/* CARDS RESUMEN */}
@@ -163,41 +184,57 @@ export default function EmpleadosView() {
           <span>Acciones</span>
         </div>
         <div className="overflow-y-auto max-h-75 scroll-table">
-          {empleadosActivos.map((emp) => (
-            <div
-              key={emp.id}
-              className="grid grid-cols-6 py-4 border-b border-yellow-500/10 text-sm hover:bg-white/5 transition-colors"
-            >
-              <span className="text-yellow-400 font-medium">
-                {emp.first_name}
-              </span>
-              <span>{emp.telephone_number}</span>
-              <span className="text-purple-400">{emp.role_name}</span>
-              <span>{emp.date_joined.split("T")[0]}</span>
-              <span className="text-green-400 font-semibold">
-                ${Number(emp.salary).toLocaleString("es-CO")}
-              </span>
+          {empleados
+            .slice()
+            .sort((a, b) => (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0))
+            .map((emp) => (
+              <div
+                key={emp.id}
+                className="grid grid-cols-6 py-4 border-b border-yellow-500/10 text-sm hover:bg-white/5 transition-colors"
+              >
+                <span className="text-yellow-400 font-medium">
+                  {emp.first_name}
+                </span>
+                <span>{emp.telephone_number}</span>
+                <span className="text-purple-400">{emp.role_name}</span>
+                <span>{emp.date_joined.split("T")[0]}</span>
+                <span className="text-green-400 font-semibold">
+                  ${Number(emp.salary).toLocaleString("es-CO")}
+                </span>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setEmpleadoEditar(emp);
-                    setModalOpen(true);
-                  }}
-                  className="text-blue-400 hover:text-blue-300 transition"
-                >
-                  <Pencil size={16} />
-                </button>
+                {emp.is_active ? (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setEmpleadoEditar(emp);
+                        setModalOpen(true);
+                      }}
+                      className="text-blue-400 hover:text-blue-300 transition"
+                    >
+                      <Pencil size={16} />
+                    </button>
 
-                <button
-                  onClick={() => eliminarEmpleado(emp.id, emp.first_name, emp)}
-                  className="text-red-500 hover:text-red-400 transition"
-                >
-                  <Trash2 size={16} />
-                </button>
+                    <button
+                      onClick={() =>
+                        eliminarEmpleado(emp.id, emp.first_name, emp)
+                      }
+                      className="text-red-500 hover:text-red-400 transition"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => activarEmpleado(emp.id, emp)}
+                      className="text-green-500 hover:text-green-400 transition"
+                    >
+                      <CheckIcon size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
 
