@@ -1,12 +1,17 @@
+import { authFetch } from "../../../utils/authFetch";
+
 export async function createEmpleado(user) {
   try {
-    const response = await fetch("http://localhost:8000/api/authusers/users/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await authFetch(
+      "http://localhost:8000/api/authusers/users/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(user),
       },
-      body: JSON.stringify(user),
-    });
+    );
 
     if (!response.ok) {
       throw new Error("Error al guardar el usuario.");
@@ -23,7 +28,7 @@ export async function createEmpleado(user) {
 
 export async function updateEmpleado(id, user) {
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `http://localhost:8000/api/authusers/users/${id}/`,
       {
         method: "PATCH",
@@ -50,7 +55,9 @@ export async function updateEmpleado(id, user) {
 
 export async function getEmpleados() {
   try {
-    const response = await fetch("http://localhost:8000/api/authusers/users/");
+    const response = await authFetch(
+      "http://localhost:8000/api/authusers/users/",
+    );
     if (!response.ok) {
       throw new Error("Error al obtener los empleados.");
     }
@@ -63,7 +70,7 @@ export async function getEmpleados() {
 
 export async function deleteEmpleado(id, empleado) {
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `http://localhost:8000/api/authusers/users/${id}/deactivate/`,
       {
         method: "POST",
@@ -76,6 +83,27 @@ export async function deleteEmpleado(id, empleado) {
 
     if (!response.ok) {
       throw new Error("Error al eliminar el empleado.");
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function activateEmpleado(id, empleado) {
+  try {
+    const response = await authFetch(
+      `http://localhost:8000/api/authusers/users/${id}/activate/`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...empleado, is_active: true }),
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Error al activar el empleado.");
     }
   } catch (error) {
     throw error;

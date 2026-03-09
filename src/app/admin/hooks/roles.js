@@ -4,6 +4,11 @@ export async function fetchRoles() {
   try {
     const response = await authFetch(
       "http://localhost:8000/api/authusers/roles/",
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      },
     );
 
     if (!response.ok) {
