@@ -27,24 +27,31 @@ export default function Login() {
     if (result.error) {
       setError(result.error);
     } else {
-      // console.log(result);
-      if (result.id_role === 1) {
-        localStorage.setItem("access", result.access);
-        localStorage.setItem("refresh", result.refresh);
-        router.push("/admin/dashboard");
+      const role = String(result.id_role ?? "");
+      localStorage.setItem("id_role", role);
+
+      if (role === "1") {
+        localStorage.setItem("accessToken", result.access);
+        localStorage.setItem("refreshToken", result.refresh);
+        router.replace("/admin/dashboard");
+        return;
       }
 
-      if (result.id_role === 2) {
-        localStorage.setItem("access", result.access);
-        localStorage.setItem("refresh", result.refresh);
-        router.push("/order/waitress");
+      if (role === "2") {
+        localStorage.setItem("accessToken", result.access);
+        localStorage.setItem("refreshToken", result.refresh);
+        router.replace("/order/waitress");
+        return;
       }
 
-      if (result.id_role === 3) {
-        localStorage.setItem("access", result.access);
-        localStorage.setItem("refresh", result.refresh);
-        router.push("/kitchen/dashboard");
+      if (role === "3") {
+        localStorage.setItem("accessToken", result.access);
+        localStorage.setItem("refreshToken", result.refresh);
+        router.replace("/UnderBar");
+        return;
       }
+
+      setError("Rol no reconocido para redirección.");
     }
   };
 

@@ -1,19 +1,26 @@
+import { authFetch } from "../../../utils/authFetch";
+
 export async function createEmpleado(user) {
   try {
-    const responde = await fetch("http://localhost:8000/api/authusers/users/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await authFetch(
+      "http://localhost:8000/api/authusers/users/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(user),
       },
-      body: JSON.stringify(user),
-    });
+    );
 
-    if (!responde.ok) {
+    if (!response.ok) {
       throw new Error("Error al guardar el usuario.");
     }
-
-    const data = await responde.json();
-    return data;
+    const message = {
+      process: "Empleado creado",
+      message: "Usuario creado exitosamente",
+    };
+    return message;
   } catch (error) {
     throw error;
   }
@@ -21,16 +28,26 @@ export async function createEmpleado(user) {
 
 export async function updateEmpleado(id, user) {
   try {
-    const responde = await fetch(
+    const response = await authFetch(
       `http://localhost:8000/api/authusers/users/${id}/`,
       {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(user),
       },
     );
+
+    if (!response.ok) {
+      throw new Error("Error al actualizar el usuario.");
+    }
+
+    const message = {
+      process: "Empleado actualizado",
+      message: "Usuario actualizado exitosamente",
+    };
+    return message;
   } catch (error) {
     throw error;
   }
@@ -38,12 +55,56 @@ export async function updateEmpleado(id, user) {
 
 export async function getEmpleados() {
   try {
-    const response = await fetch("http://localhost:8000/api/authusers/users/");
+    const response = await authFetch(
+      "http://localhost:8000/api/authusers/users/",
+    );
     if (!response.ok) {
       throw new Error("Error al obtener los empleados.");
     }
     const data = await response.json();
     return data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function deleteEmpleado(id, empleado) {
+  try {
+    const response = await authFetch(
+      `http://localhost:8000/api/authusers/users/${id}/deactivate/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...empleado, is_active: false }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Error al eliminar el empleado.");
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function activateEmpleado(id, empleado) {
+  try {
+    const response = await authFetch(
+      `http://localhost:8000/api/authusers/users/${id}/activate/`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...empleado, is_active: true }),
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Error al activar el empleado.");
+    }
   } catch (error) {
     throw error;
   }

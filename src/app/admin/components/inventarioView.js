@@ -1,39 +1,28 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Pencil } from "lucide-react";
+import { getInventory, updateInventory } from "../hooks/inventory";
 import EditInventarioModal from "./editInventarioModal"; // 👈 IMPORT
+import Image from "next/image";
+import AddButton from "../../components/AddButton";
 
 export default function InventarioView() {
   const [search, setSearch] = useState("");
+  const [products, setProducts] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 🔥 Ahora products es estado (antes era const normal)
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: "Poker Pipona",
-      quantity: 6,
-      price: 5600,
-      image: "/cervezas/poker.png",
-      description: "Cerveza Poker Pipona 500ml",
-    },
-    {
-      id: 2,
-      name: "Cerveza Poker Vidrio",
-      quantity: 180,
-      price: 3500,
-      image: "/cervezas/cerveza_poker_vidrio.jpg",
-      description: "Cerveza Poker Vidrio 500ml",
-    },
-    {
-      id: 3,
-      name: "Cerveza Heineken",
-      quantity: 120,
-      price: 4200,
-      image: "/heineken.png",
-      description: "Cerveza Heineken 500ml",
-    },
-  ]);
+  useEffect(() => {
+    const loadInventory = async () => {
+      try {
+        const inventoryData = await getInventory();
+        setProducts(inventoryData);
+      } catch (error) {
+        console.error("Error loading inventory:", error);
+      }
+    };
+    loadInventory();
+  }, []);
 
   // 🔥 Producto seleccionado para editar
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -70,20 +59,29 @@ export default function InventarioView() {
             className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
           />
         </div>
+
+        <AddButton
+          onClick={() => {
+            setSelectedProduct(null);
+            setIsModalOpen(true);
+          }}
+        />
       </div>
 
       <div className="space-y-8">
-        {filteredProducts.map((product) => (
+        {products.map((product) => (
           <div
             key={product.id}
             className={`${cardStyle} flex flex-col md:flex-row md:items-center md:justify-between gap-6`}
           >
             <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-40 h-48 bg-zinc-900 border border-yellow-600/20 rounded-xl flex items-center justify-center">
-                <img
-                  src={product.image}
+              <div className="w-40 h-40 min-w-40 bg-zinc-900 border border-yellow-600/20 rounded-xl flex items-center justify-center p-2">
+                <Image
+                  src={product.url_img}
                   alt={product.name}
-                  className="h-40 object-contain"
+                  width={120}
+                  height={120}
+                  className="object-contain max-w-full max-h-full"
                 />
               </div>
 
@@ -100,17 +98,17 @@ export default function InventarioView() {
                   Cantidad:{" "}
                   <span
                     className={`font-semibold ${
-                      product.quantity <= 10 ? "text-red-500" : "text-white"
+                      product.amount <= 10 ? "text-red-500" : "text-white"
                     }`}
                   >
-                    {product.quantity}
+                    {product.amount}
                   </span>
                 </p>
 
                 <p className="text-sm text-gray-400">
                   Precio:{" "}
                   <span className="text-green-400 font-semibold">
-                    ${product.price.toLocaleString()}
+                    ${Math.round(product.price).toLocaleString("es-CO")}
                   </span>
                 </p>
               </div>
@@ -118,7 +116,10 @@ export default function InventarioView() {
 
             {/* 🔥 BOTÓN EDITAR */}
             <button
-              onClick={() => setSelectedProduct(product)}
+              onClick={() => {
+                setSelectedProduct(product);
+                setIsModalOpen(true);
+              }}
               className="bg-zinc-900 border border-white/10 p-3 rounded-xl transition-colors hover:border-yellow-500"
             >
               <Pencil size={18} />
@@ -128,20 +129,22 @@ export default function InventarioView() {
       </div>
 
       {/* 🔥 MODAL */}
-      {selectedProduct && (
-        <EditInventarioModal
-          product={selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-          onSave={(updatedProduct) => {
-            setProducts((prev) =>
-              prev.map((p) =>
-                p.id === updatedProduct.id ? updatedProduct : p,
-              ),
-            );
-            setSelectedProduct(null);
-          }}
-        />
-      )}
+
+      <EditInventarioModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setSelectedProduct(null);
+          setIsModalOpen(false);
+        }}
+        onSave={(message) => {
+          setIsModalOpen(false);
+          setSelectedProduct(null);
+          setCreationMessage(message);
+          setShowAlert(true);
+        }}
+        selectedProduct={selectedProduct}
+        // updateInventory={ShowUpdatedInventory}
+      />
     </div>
   );
 }

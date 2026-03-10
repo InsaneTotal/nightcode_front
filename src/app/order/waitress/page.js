@@ -170,40 +170,35 @@ export default function WaitressPage() {
   const mesaActual = tables.find((m) => m.id === mesaActiva);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-[#0b0b0b] to-black text-white px-4 pt-8 pb-32">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-center text-yellow-400">
-          PANEL DE SERVICIO
-        </h1>
+    <ProtectedRoute allowedRoles={["2", "1"]}>
+      <div className="min-h-screen bg-linear-to-br from-black via-[#0b0b0b] to-black text-white px-4 pt-8 pb-32">
+        <div className="max-w-2xl mx-auto space-y-6">
+          <h1 className="text-2xl font-bold text-center text-yellow-400">
+            PANEL DE SERVICIO
+          </h1>
 
-        {/* FILTROS */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {estados.map((estado) => (
-            <button
-              key={estado}
-              onClick={() => setFiltro(estado)}
-              className={`px-4 py-2 rounded-full text-sm border transition ${
-                filtro === estado
-                  ? "bg-yellow-500 text-black border-yellow-500"
-                  : "border-yellow-500/30 text-yellow-400"
-              }`}
-            >
-              {estado}
-            </button>
-          ))}
-        </div>
+          {/* FILTROS */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {estados.map((estado) => (
+              <button
+                key={estado}
+                onClick={() => setFiltro(estado)}
+                className={`px-4 py-2 rounded-full text-sm border transition ${
+                  filtro === estado
+                    ? "bg-yellow-500 text-black border-yellow-500"
+                    : "border-yellow-500/30 text-yellow-400"
+                }`}
+              >
+                {estado}
+              </button>
+            ))}
+          </div>
 
-        {/* MESAS */}
-        {mesasFiltradas.map((mesa) => (
-          <motion.div
-            key={mesa.id}
-            className="rounded-2xl border border-yellow-400/20 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden"
-          >
-            <div
-              className="flex justify-between items-center px-4 py-5 cursor-pointer"
-              onClick={() =>
-                setMesaActiva(mesaActiva === mesa.id ? null : mesa.id)
-              }
+          {/* MESAS */}
+          {mesasFiltradas.map((mesa) => (
+            <motion.div
+              key={mesa.id}
+              className="rounded-2xl border border-yellow-400/20 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden"
             >
               <div>
                 <h2 className="text-lg font-bold">Mesa {mesa.id}</h2>
@@ -229,7 +224,6 @@ export default function WaitressPage() {
                   <ChevronDown size={20} />
                 </motion.div>
               </div>
-            </div>
 
             <AnimatePresence>
               {mesaActiva === mesa.id && (
@@ -260,72 +254,71 @@ export default function WaitressPage() {
                               ).toLocaleString()}
                             </span>
                           </div>
-                        ))}
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          ))}
+        </div>
 
-                        <div className="flex gap-3 pt-4">
-                          <button
-                            onClick={() => abrirEditarPedido(mesa)}
-                            className="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-400/40 text-blue-400 text-xs"
-                          >
-                            ✏️ Editar
-                          </button>
-
-                          <button
-                            onClick={() => cancelarPedidoConfirmacion(mesa.id)}
-                            className="px-4 py-2 rounded-xl bg-red-500/20 border border-red-400/40 text-red-400 text-xs"
-                          >
-                            ❌ Cancelar Pedido
-                          </button>
-                        </div>
-                      </>
-                    )}
+        {/* 🔥 BARRA INFERIOR */}
+        {mesaActual && (
+          <motion.div
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            className="fixed bottom-0 left-0 w-full bg-black/95 border-t border-yellow-400/20 px-4 py-5 z-40"
+          >
+            <div className="max-w-2xl mx-auto flex justify-between items-center">
+              {mesaActual.items.length > 0 ? (
+                <>
+                  <div>
+                    <p className="text-xs text-gray-400">
+                      Total Mesa {mesaActual.id}
+                    </p>
+                    <p className="text-2xl font-extrabold text-yellow-400">
+                      ${calcularTotal(mesaActual.items).toLocaleString()}
+                    </p>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        ))}
-      </div>
 
-      {/* 🔥 BARRA INFERIOR */}
-      {mesaActual && (
-        <motion.div
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 w-full bg-black/95 border-t border-yellow-400/20 px-4 py-5 z-40"
-        >
-          <div className="max-w-2xl mx-auto flex justify-between items-center">
-            {mesaActual.items.length > 0 ? (
-              <>
-                <div>
-                  <p className="text-xs text-gray-400">
-                    Total Mesa {mesaActual.id}
-                  </p>
-                  <p className="text-2xl font-extrabold text-yellow-400">
-                    ${calcularTotal(mesaActual.items).toLocaleString()}
-                  </p>
-                </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setOpenPago(true)}
+                      className="px-6 py-3 rounded-2xl bg-yellow-500 text-black font-bold"
+                    >
+                      💳 Pagar
+                    </button>
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setOpenPago(true)}
-                    className="px-6 py-3 rounded-2xl bg-yellow-500 text-black font-bold"
-                  >
-                    💳 Pagar
-                  </button>
+                    <button
+                      onClick={() => setOpenModal(true)}
+                      className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
+                    >
+                      ➕ Agregar
+                    </button>
+
+                    <button
+                      onClick={() => abrirConfirmacionLiberar(mesaActual.id)}
+                      className="px-6 py-3 rounded-2xl bg-red-500 text-white font-bold"
+                    >
+                      🗑 Liberar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-xl font-bold text-green-400">
+                      Disponible
+                    </p>
+                  </div>
 
                   <button
-                    onClick={() => setOpenModal(true)}
+                    onClick={() => ocuparMesa(mesaActual.id)}
                     className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
                   >
-                    ➕ Agregar
-                  </button>
-
-                  <button
-                    onClick={() => abrirConfirmacionLiberar(mesaActual.id)}
-                    className="px-6 py-3 rounded-2xl bg-red-500 text-white font-bold"
-                  >
-                    🗑 Liberar
+                    ➕ Ocupar Mesa
                   </button>
                 </div>
               </>

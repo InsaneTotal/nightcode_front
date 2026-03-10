@@ -1,23 +1,64 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, act } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, Pencil, Trash2, Users, DollarSign } from "lucide-react";
+import {
+  UserPlus,
+  Pencil,
+  Trash2,
+  Users,
+  DollarSign,
+  CheckIcon,
+} from "lucide-react";
 import EditEmpleadosModal from "./EditEmpleadosModal";
 import Swal from "sweetalert2";
-import { getEmpleados } from "../hooks/empleados";
+import {
+  getEmpleados,
+  deleteEmpleado,
+  activateEmpleado,
+} from "../hooks/empleados";
+import { resolve } from "path";
+import AddButton from "../../components/AddButton";
 
 export default function EmpleadosView() {
   const [empleados, setEmpleados] = useState([]);
+  const [empleadosActivos, setEmpleadosActivos] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [empleadoEditar, setEmpleadoEditar] = useState(null);
-  const totalNomina = 15500;
-  // const totalNomina = useMemo(() => {
-  //   return empleados.reduce((acc, emp) => acc + Number(emp.salario), 0);
-  // }, [empleados]);
+  const [mostratAlertaCreacion, setMostratAlertaCreacion] = useState(false);
+  const [mensajeCreacion, setMensajeCreacion] = useState("");
+
+  const totalNomina = useMemo(() => {
+    return empleadosActivos.reduce((acc, emp) => acc + Number(emp.salary), 0);
+  }, [empleadosActivos]);
 
   const cardStyle =
     "bg-gradient-to-br from-black via-[#050816] to-[#0a0f2a] border border-yellow-500/30 rounded-2xl p-6 shadow-lg hover:shadow-yellow-500/20 transition-all duration-300";
+
+  const actualizarListaEmpleados = async () => {
+    const result = await getEmpleados();
+    setEmpleados(result);
+    setEmpleadosActivos(result.filter((emp) => emp.is_active));
+  };
+
+  useEffect(() => {
+    if (mostratAlertaCreacion) {
+      console.log(mensajeCreacion);
+      Swal.fire({
+        title: mensajeCreacion.process || "Usuario creado",
+        text:
+          mensajeCreacion.message || "El empleado fue creado correctamente.",
+        icon: "success",
+        timer: 5000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        background: "#0a0f2a",
+        color: "#fff",
+      });
+      setMostratAlertaCreacion(false);
+      setMensajeCreacion("");
+    }
+  }, [mostratAlertaCreacion, mensajeCreacion]);
 
   const eliminarEmpleado = (id, nombre) => {
     Swal.fire({
@@ -34,13 +75,12 @@ export default function EmpleadosView() {
       showLoaderOnConfirm: true,
       allowOutsideClick: () => !Swal.isLoading(),
 
-      preConfirm: () => {
-        return new Promise((resolve) => {
-          setTimeout(() => {
-            setEmpleados((prev) => prev.filter((emp) => emp.id !== id));
-            resolve();
-          }, 1000);
-        });
+      preConfirm: async () => {
+        const result = await deleteEmpleado(id);
+        if (result instanceof Error) {
+          Swal.showValidationMessage(`${result.message}`);
+        }
+        resolve();
       },
     }).then((result) => {
       if (result.isConfirmed) {
@@ -52,39 +92,36 @@ export default function EmpleadosView() {
           background: "#0a0f2a",
           color: "#fff",
         });
+        actualizarListaEmpleados();
       }
     });
   };
 
-  // const guardarEmpleado = (nuevoEmpleado) => {
-  //   if (empleadoEditar) {
-  //     // EDITAR
-  //     setEmpleados((prev) =>
-  //       prev.map((emp) =>
-  //         emp.id === empleadoEditar.id ? { ...emp, ...nuevoEmpleado } : emp,
-  //       ),
-  //     );
-  //   } else {
-  //     // AGREGAR
-  //     setEmpleados((prev) => [
-  //       ...prev,
-  //       {
-  //         ...nuevoEmpleado,
-  //         id: Date.now(),
-  //         salario: Number(nuevoEmpleado.salario),
-  //       },
-  //     ]);
-  //   }
-
-  //   setModalOpen(false);
-  //   setEmpleadoEditar(null);
-  // };
+  const activarEmpleado = async (id, empleado) => {
+    try {
+      const result = await activateEmpleado(id, empleado);
+      if (result instanceof Error) {
+        throw result;
+      }
+      actualizarListaEmpleados();
+    } catch (error) {
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo activar el empleado.",
+        icon: "error",
+        confirmButtonColor: "#dc2626",
+        background: "#0a0f2a",
+        color: "#fff",
+      });
+    }
+  };
 
   useEffect(() => {
     const cargarEmpleados = async () => {
       try {
         const result = await getEmpleados();
         setEmpleados(result);
+        setEmpleadosActivos(result.filter((emp) => emp.is_active));
       } catch (error) {
         return error;
       }
@@ -105,16 +142,12 @@ export default function EmpleadosView() {
           Gestión de Empleados
         </h2>
 
-        <button
+        <AddButton
           onClick={() => {
             setEmpleadoEditar(null);
             setModalOpen(true);
           }}
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-xl text-sm font-medium transition"
-        >
-          <UserPlus size={18} />
-          Agregar
-        </button>
+        />
       </div>
 
       {/* CARDS RESUMEN */}
@@ -125,7 +158,7 @@ export default function EmpleadosView() {
             Total Empleados
           </p>
           <p className="text-3xl font-bold text-yellow-400 mt-2">
-            {empleados.length}
+            {empleadosActivos.length}
           </p>
         </div>
 
@@ -141,51 +174,68 @@ export default function EmpleadosView() {
       </div>
 
       {/* TABLA */}
-      <div className={cardStyle}>
+      <div className={`${cardStyle} `}>
         <div className="grid grid-cols-6 text-gray-400 border-b border-yellow-500/30 pb-4 mb-4 text-sm">
           <span>Empleado</span>
           <span>Teléfono</span>
           <span>Oficio</span>
-          <span>Fecha</span>
+          <span>Fecha Ingreso</span>
           <span>Salario</span>
           <span>Acciones</span>
         </div>
-
-        {empleados.map((emp) => (
-          <div
-            key={emp.id}
-            className="grid grid-cols-6 py-4 border-b border-yellow-500/10 text-sm hover:bg-white/5 transition-colors"
-          >
-            <span className="text-yellow-400 font-medium">
-              {emp.first_name}
-            </span>
-            <span>{emp.telephone_number}</span>
-            <span className="text-purple-400">{emp.role_name}</span>
-            <span>{emp.date_joined.split("T")[0]}</span>
-            <span className="text-green-400 font-semibold">
-              ${Number(emp.salario).toLocaleString("es-CO")}
-            </span>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setEmpleadoEditar(emp);
-                  setModalOpen(true);
-                }}
-                className="text-blue-400 hover:text-blue-300 transition"
+        <div className="overflow-y-auto max-h-75 scroll-table">
+          {empleados
+            .slice()
+            .sort((a, b) => (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0))
+            .map((emp) => (
+              <div
+                key={emp.id}
+                className="grid grid-cols-6 py-4 border-b border-yellow-500/10 text-sm hover:bg-white/5 transition-colors"
               >
-                <Pencil size={16} />
-              </button>
+                <span className="text-yellow-400 font-medium">
+                  {emp.first_name}
+                </span>
+                <span>{emp.telephone_number}</span>
+                <span className="text-purple-400">{emp.role_name}</span>
+                <span>{emp.date_joined.split("T")[0]}</span>
+                <span className="text-green-400 font-semibold">
+                  ${Number(emp.salary).toLocaleString("es-CO")}
+                </span>
 
-              <button
-                onClick={() => eliminarEmpleado(emp.id, emp.first_name)}
-                className="text-red-500 hover:text-red-400 transition"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </div>
-        ))}
+                {emp.is_active ? (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setEmpleadoEditar(emp);
+                        setModalOpen(true);
+                      }}
+                      className="text-blue-400 hover:text-blue-300 transition"
+                    >
+                      <Pencil size={16} />
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        eliminarEmpleado(emp.id, emp.first_name, emp)
+                      }
+                      className="text-red-500 hover:text-red-400 transition"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => activarEmpleado(emp.id, emp)}
+                      className="text-green-500 hover:text-green-400 transition"
+                    >
+                      <CheckIcon size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+        </div>
       </div>
 
       {/* MODAL */}
@@ -195,7 +245,14 @@ export default function EmpleadosView() {
           setModalOpen(false);
           setEmpleadoEditar(null);
         }}
+        onSave={(message) => {
+          setModalOpen(false);
+          setEmpleadoEditar(null);
+          setMensajeCreacion(message);
+          setMostratAlertaCreacion(true);
+        }}
         empleadoEditar={empleadoEditar}
+        actualizarListaEmpleados={actualizarListaEmpleados}
       />
     </motion.div>
   );

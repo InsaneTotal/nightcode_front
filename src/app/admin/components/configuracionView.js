@@ -1,10 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
-import { Building2, Shield, Settings2, LogOut, Save } from "lucide-react";
+import { Building2, Shield, Settings2, Save } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "../../../context/AppContext";
+import LogoutButton from "../../components/LogoutButton";
 
 export default function ConfiguracionView() {
   const router = useRouter();
@@ -88,9 +90,11 @@ export default function ConfiguracionView() {
               </label>
 
               <div className="flex items-center gap-4 mt-3">
-                <img
+                <Image
                   src={form.logo}
                   alt="Logo"
+                  width={14}
+                  height={14}
                   className="w-14 h-14 object-contain bg-[#111827] rounded-xl p-2"
                 />
 
@@ -207,26 +211,7 @@ export default function ConfiguracionView() {
       </motion.div>
 
       {/* ================= SESIÓN ================= */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="bg-[#1f2937] p-8 rounded-2xl border border-gray-800 shadow-lg mt-8"
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <LogOut size={22} />
-          <h2 className="text-xl font-medium">Sesión</h2>
-        </div>
-
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => router.push("/auth/login")}
-          className="bg-red-500 hover:bg-red-600 transition py-3 px-8 rounded-xl font-semibold"
-        >
-          Cerrar Sesión
-        </motion.button>
-      </motion.div>
+      <LogoutButton />
     </div>
   );
 }
