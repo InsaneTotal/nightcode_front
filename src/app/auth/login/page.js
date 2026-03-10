@@ -139,7 +139,7 @@ export default function Login() {
             {/* LINK REGISTER */}
             <p className="text-center text-sm text-gray-400 pt-4">
               ¿No tienes cuenta?{" "}
-              <a href="/register" className="text-yellow-400 hover:underline">
+              <a href="/auth/register" className="text-yellow-400 hover:underline">
                 Regístrate aquí
               </a>
             </p>
