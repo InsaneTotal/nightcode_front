@@ -7,6 +7,7 @@ import PedidoModal from "./components/modalAdd";
 import ModalPago from "./components/modalPay";
 import ModalEditPedidos from "./components/modalEditPedidos.js";
 import { showModalConfirmation } from "./components/modalConfimation";
+import ProtectedRoute from "../../../routes/protectedRoutes";
 
 //---------------------------------------------------//
 import { getDrinkTables } from "./hook/drinkTables";
@@ -35,61 +36,61 @@ export default function WaitressPage() {
   } = useWaitressOrders(setTables, setMesaActiva, setOpenPago);
 
   useEffect(() => {
-  const loadData = async () => {
-    try {
-      const tablesData = await getDrinkTables();
-      const ordersData = await getOrders();
-      const drinksData = await getDrinks();
+    const loadData = async () => {
+      try {
+        const tablesData = await getDrinkTables();
+        const ordersData = await getOrders();
+        const drinksData = await getDrinks();
 
-      setDrinks(drinksData);
+        setDrinks(drinksData);
 
-      const tablesWithOrders = tablesData.map((mesa) => {
-        const order = ordersData.find(
-          (o) => o.id_mesa === mesa.id && o.id_order_status !== 4
-        );
+        const tablesWithOrders = tablesData.map((mesa) => {
+          const order = ordersData.find(
+            (o) => o.id_mesa === mesa.id && o.id_order_status !== 4,
+          );
 
-        return {
-          ...mesa,
-          orderId: order?.id,
-          items: order // esto funciona para transformar los detalles del pedido en el formato que espera la UI
-            ? Object.values(
-                order.details.reduce((acc, detail) => {
-                  const nombre = detail.drink.name;
-                  const id = detail.drink.id;
-                  const cantidad = Number(detail.amount || 1);
-                  if (!acc[nombre]) {
-                    acc[nombre] = {
-                      id: id,
-                      nombre,
-                      precio: Number(detail.unit_price),
-                      cantidad: 0,
-                    };
-                  }
+          return {
+            ...mesa,
+            orderId: order?.id,
+            items: order // esto funciona para transformar los detalles del pedido en el formato que espera la UI
+              ? Object.values(
+                  order.details.reduce((acc, detail) => {
+                    const nombre = detail.drink.name;
+                    const id = detail.drink.id;
+                    const cantidad = Number(detail.amount || 1);
+                    if (!acc[nombre]) {
+                      acc[nombre] = {
+                        id: id,
+                        nombre,
+                        precio: Number(detail.unit_price),
+                        cantidad: 0,
+                      };
+                    }
 
-                  acc[nombre].cantidad += cantidad;
+                    acc[nombre].cantidad += cantidad;
 
-                  return acc;
-                }, {}),
-              )
-            : [],
+                    return acc;
+                  }, {}),
+                )
+              : [],
 
-         color:
-            order && order.details.length > 0
-            ? "yellow"
-            : mesa.status === 1
-            ? "green"
-            : "red",
-        };
-      });
+            color:
+              order && order.details.length > 0
+                ? "yellow"
+                : mesa.status === 1
+                  ? "green"
+                  : "red",
+          };
+        });
 
-      setTables(tablesWithOrders);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    }
-  };
+        setTables(tablesWithOrders);
+      } catch (error) {
+        console.error("Error loading data:", error);
+      }
+    };
 
-  loadData();
-}, []);
+    loadData();
+  }, []);
 
   const estados = ["Todas", "Libre", "En consumo", "Pendiente"];
 
@@ -120,10 +121,10 @@ export default function WaitressPage() {
   };
 
   // 🔥 WRAPPERS PARA FUNCIONES DEL HOOK
-  const agregarProductosAMesa = (mesaId, productos) => 
+  const agregarProductosAMesa = (mesaId, productos) =>
     hookAgregarProductos(tables, mesaId, productos);
 
-  const actualizarPedidoMesa = (mesaId, nuevosProductos) => 
+  const actualizarPedidoMesa = (mesaId, nuevosProductos) =>
     hookActualizarPedido(tables, mesaId, nuevosProductos);
 
   const liberarMesa = (id) => hookLiberarMesa(tables, id);
@@ -163,9 +164,9 @@ export default function WaitressPage() {
       : tables.filter((m) =>
           filtro === "Libre"
             ? m.color === "green"
-          : filtro === "En consumo"
-          ? m.color === "yellow"
-          : m.color === "red",
+            : filtro === "En consumo"
+              ? m.color === "yellow"
+              : m.color === "red",
         );
   const mesaActual = tables.find((m) => m.id === mesaActiva);
 
@@ -206,17 +207,17 @@ export default function WaitressPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs border ${getBadgeStyles(
-                      mesa.color,
-                    )}`}
-                  >
-                    {mesa.items.length > 0
-                      ? "En consumo"
-                      : mesa.status === 1
+                <span
+                  className={`px-2 py-1 rounded-full text-xs border ${getBadgeStyles(
+                    mesa.color,
+                  )}`}
+                >
+                  {mesa.items.length > 0
+                    ? "En consumo"
+                    : mesa.status === 1
                       ? "Libre"
                       : "Pendiente"}
-                  </span>
+                </span>
 
                 <motion.div
                   animate={{ rotate: mesaActiva === mesa.id ? 180 : 0 }}
@@ -225,35 +226,38 @@ export default function WaitressPage() {
                 </motion.div>
               </div>
 
-            <AnimatePresence>
-              {mesaActiva === mesa.id && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="border-t border-yellow-400/20 px-4 py-4 space-y-3 text-sm">
-                    {mesa.items.length === 0 ? (
-                      <p className="text-gray-400">No hay consumos activos</p>
-                    ) : (
-                      <>
-                        {mesa.items.map((item, i) => ( 
-                          <div
-                            key={i}
-                            className="flex justify-between text-gray-300"
-                          >
-                            <span>
-                              {item.nombre} {item.cantidad ? `x${item.cantidad}` : ""}
-                            </span>
+              <AnimatePresence>
+                {mesaActiva === mesa.id && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="border-t border-yellow-400/20 px-4 py-4 space-y-3 text-sm">
+                      {mesa.items.length === 0 ? (
+                        <p className="text-gray-400">No hay consumos activos</p>
+                      ) : (
+                        <>
+                          {mesa.items.map((item, i) => (
+                            <div
+                              key={i}
+                              className="flex justify-between text-gray-300"
+                            >
+                              <span>
+                                {item.nombre}{" "}
+                                {item.cantidad ? `x${item.cantidad}` : ""}
+                              </span>
 
-                            <span>
-                              $
-                              {(
-                              Number(item.precio) * (item.cantidad ? item.cantidad : 1)
-                              ).toLocaleString()}
-                            </span>
-                          </div>
+                              <span>
+                                $
+                                {(
+                                  Number(item.precio) *
+                                  (item.cantidad ? item.cantidad : 1)
+                                ).toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
                         </>
                       )}
                     </div>
@@ -320,50 +324,37 @@ export default function WaitressPage() {
                   >
                     ➕ Ocupar Mesa
                   </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <p className="text-xl font-bold text-green-400">Disponible</p>
-                </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
 
-                <button
-                  onClick={() => ocuparMesa(mesaActual.id)}
-                  className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
-                >
-                  ➕ Ocupar Mesa
-                </button>
-              </>
-            )}
-          </div>
-        </motion.div>
-      )}
+        {/* MODALES */}
+        <PedidoModal
+          isOpen={openModal}
+          onClose={() => setOpenModal(false)}
+          mesaId={mesaActual?.id}
+          productosDB={drinks}
+          onAgregarProductos={agregarProductosAMesa}
+        />
 
-      {/* MODALES */}
-      <PedidoModal
-        isOpen={openModal}
-        onClose={() => setOpenModal(false)}
-        mesaId={mesaActual?.id}
-        productosDB={drinks}
-        onAgregarProductos={agregarProductosAMesa}
-      />
+        <ModalPago
+          abierto={openPago}
+          onClose={() => setOpenPago(false)}
+          total={calcularTotal(mesaActual?.items || [])}
+          descripcion="Pedido completo"
+          onConfirmarPago={confirmarPago}
+        />
 
-      <ModalPago
-        abierto={openPago}      
-        onClose={() => setOpenPago(false)}
-        total={calcularTotal(mesaActual?.items || [])}
-        descripcion="Pedido completo"
-        onConfirmarPago={confirmarPago}
-      />
-
-      <ModalEditPedidos
-        isOpen={openEditar}
-        onClose={() => setOpenEditar(false)}
-        mesa={mesaEditando}
-        productosDB={drinks}
-        onGuardarCambios={actualizarPedidoMesa}
-      />
-    </div>
+        <ModalEditPedidos
+          isOpen={openEditar}
+          onClose={() => setOpenEditar(false)}
+          mesa={mesaEditando}
+          productosDB={drinks}
+          onGuardarCambios={actualizarPedidoMesa}
+        />
+      </div>
+    </ProtectedRoute>
   );
 }
