@@ -14,7 +14,13 @@ export default function ModalEditPedidos({
 
   useEffect(() => {
     if (isOpen && mesa) {
-      setProductosSeleccionados(mesa.items || []);
+      const itemsConvertidos = (mesa.items || []).map(item => ({
+        id: item.id || 0,
+        name: item.nombre || item.name || 'Producto desconocido',
+        price: item.precio || item.price || 0,
+        cantidad: item.cantidad || 1,
+      }));
+      setProductosSeleccionados(itemsConvertidos);
     }
   }, [isOpen, mesa]);
 
@@ -22,18 +28,33 @@ export default function ModalEditPedidos({
     const existe = productosSeleccionados.find((p) => p.id === producto.id);
 
     if (existe) {
+      // Si existe, quitarlo
       setProductosSeleccionados((prev) =>
         prev.filter((p) => p.id !== producto.id),
       );
     } else {
-      setProductosSeleccionados((prev) => [...prev, producto]);
+      // Si no existe, agregarlo con cantidad 1
+      setProductosSeleccionados((prev) => [...prev, {
+        id: producto.id,
+        name: producto.name,
+        price: Number(producto.price),
+        cantidad: 1,
+      }]);
     }
   };
 
   const guardarCambios = () => {
     if (!mesa) return;
 
-    onGuardarCambios(mesa.id, productosSeleccionados);
+    // Convertir productosSeleccionados a la estructura que espera actualizarPedidoMesa
+    const productosConvertidos = productosSeleccionados.map(item => ({
+      id: item.id,
+      nombre: item.name, // convertir 'name' a 'nombre'
+      precio: item.price, // convertir 'price' a 'precio'
+      cantidad: item.cantidad,
+    }));
+
+    onGuardarCambios(mesa.id, productosConvertidos);
     onClose();
   };
 
@@ -58,22 +79,75 @@ export default function ModalEditPedidos({
 
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {productosDB.map((producto) => {
-                const activo = productosSeleccionados.find(
+                const seleccionado = productosSeleccionados.find(
                   (p) => p.id === producto.id,
                 );
 
                 return (
                   <div
                     key={producto.id}
-                    onClick={() => toggleProducto(producto)}
-                    className={`flex justify-between px-3 py-2 rounded-lg cursor-pointer transition ${
-                      activo
+                    className={`flex justify-between items-center px-3 py-2 rounded-lg transition ${
+                      seleccionado
                         ? "bg-yellow-500/20 border border-yellow-400/40"
                         : "bg-white/5"
                     }`}
                   >
-                    <span>{producto.nombre}</span>
-                    <span>${producto.precio.toLocaleString()}</span>
+                    <div className="flex-1"> 
+                      <span>{producto.name}</span>
+                      <div className="text-xs text-gray-400">
+                        ${Number(producto.price).toLocaleString()}
+                      </div>
+                    </div>
+
+                    {seleccionado ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            if (seleccionado.cantidad > 1) {
+                              setProductosSeleccionados((prev) =>
+                                prev.map((p) =>
+                                  p.id === producto.id
+                                    ? { ...p, cantidad: p.cantidad - 1 }
+                                    : p
+                                )
+                              );
+                            } else {
+                              // Si llega a 0, quitar el producto
+                              setProductosSeleccionados((prev) =>
+                                prev.filter((p) => p.id !== producto.id)
+                              );
+                            }
+                          }}
+                          className="w-6 h-6 rounded bg-red-500/20 text-red-400 flex items-center justify-center text-sm"
+                        >
+                          -
+                        </button>
+                        <span className="text-yellow-400 font-bold">
+                          {seleccionado.cantidad}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setProductosSeleccionados((prev) =>
+                              prev.map((p) =>
+                                p.id === producto.id
+                                  ? { ...p, cantidad: p.cantidad + 1 }
+                                  : p
+                              )
+                            );
+                          }}
+                          className="w-6 h-6 rounded bg-green-500/20 text-green-400 flex items-center justify-center text-sm"
+                        >
+                          +
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => toggleProducto(producto)}
+                        className="px-3 py-1 rounded bg-yellow-500/20 text-yellow-400 text-sm"
+                      >
+                        Agregar
+                      </button>
+                    )}
                   </div>
                 );
               })}

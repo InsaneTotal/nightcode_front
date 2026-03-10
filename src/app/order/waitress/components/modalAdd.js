@@ -19,7 +19,7 @@ export default function PedidoModal({
 
   // 🔥 FILTRO EN TIEMPO REAL
   const productosFiltrados = productosDB.filter((producto) =>
-    producto.nombre.toLowerCase().includes(search.toLowerCase()),
+    producto.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   // 🔥 FUNCIONES DE CANTIDAD
@@ -45,19 +45,19 @@ export default function PedidoModal({
   };
 
   // 🔥 CONFIRMAR PEDIDO
-  const realizarPedido = () => {
+  const realizarPedido = async () => {
     const productosSeleccionados = [];
 
     Object.entries(cantidades).forEach(([id, cantidad]) => {
       if (cantidad > 0) {
         const producto = productosDB.find((p) => p.id === Number(id));
 
-        for (let i = 0; i < cantidad; i++) {
-          productosSeleccionados.push({
-            nombre: producto.nombre,
-            precio: producto.precio,
-          });
-        }
+        productosSeleccionados.push({
+          id: producto.id,
+          nombre: producto.name,
+          precio: producto.price,
+          cantidad: cantidad,
+        });
       }
     });
 
@@ -73,26 +73,38 @@ export default function PedidoModal({
       return;
     }
 
-    // 🔥 ENVIAR PRODUCTOS A LA MESA
-    onAgregarProductos(mesaId, productosSeleccionados);
+    try {
+      // 🔥 ENVIAR PRODUCTOS A LA MESA
+      await onAgregarProductos(mesaId, productosSeleccionados);
 
-    // 🔥 ALERTA DE ÉXITO
-    Swal.fire({
-      icon: "success",
-      title: "Pedido enviado",
-      text: "Productos agregados correctamente",
-      background: "#0f0f0f",
-      color: "#facc15",
-      confirmButtonColor: "#22c55e",
-      timer: 1500,
-      showConfirmButton: false,
-    });
+      // 🔥 ALERTA DE ÉXITO
+      Swal.fire({
+        icon: "success",
+        title: "Pedido enviado",
+        text: "Productos agregados correctamente",
+        background: "#0f0f0f",
+        color: "#facc15",
+        confirmButtonColor: "#22c55e",
+        timer: 1500,
+        showConfirmButton: false,
+      });
 
-    // 🔥 LIMPIAR ESTADO
-    setCantidades({});
-    setSearch("");
+      // 🔥 LIMPIAR ESTADO
+      setCantidades({});
+      setSearch("");
 
-    onClose();
+      onClose();
+    } catch (error) {
+      // Mostrar error si falla
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron agregar los productos. Intenta nuevamente.",
+        background: "#0f0f0f",
+        color: "#fff",
+        confirmButtonColor: "#eab308",
+      });
+    }
   };
 
   return (
@@ -141,9 +153,9 @@ export default function PedidoModal({
                 className="flex justify-between items-center border-b border-yellow-700 pb-3"
               >
                 <div>
-                  <p>{producto.nombre}</p>
+                  <p>{producto.name}</p>
                   <p className="text-xs text-gray-400">
-                    ${producto.precio.toLocaleString()}
+                    ${Number(producto.price).toLocaleString()}
                   </p>
                 </div>
 

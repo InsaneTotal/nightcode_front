@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PedidoModal from "./components/modalAdd";
 import ModalPago from "./components/modalPay";
 import ModalEditPedidos from "./components/modalEditPedidos.js";
 import { showModalConfirmation } from "./components/modalConfimation";
-import { mesasDB, productosDB } from "./data/dbfake";
-import ProtectedRoute from "../../../routes/protectedRoutes";
+
+//---------------------------------------------------//
+import { getDrinkTables } from "./hook/drinkTables";
+import { getOrders } from "./hook/orders";
+import { getDrinks } from "./hook/drinks";
+import { useWaitressOrders } from "./hook/useWaitressOrders";
 
 export default function WaitressPage() {
   const [mesaActiva, setMesaActiva] = useState(null);
@@ -17,7 +21,75 @@ export default function WaitressPage() {
   const [openEditar, setOpenEditar] = useState(false);
   const [mesaEditando, setMesaEditando] = useState(null);
   const [filtro, setFiltro] = useState("Todas");
-  const [mesas, setMesas] = useState(mesasDB);
+  //---------------------------------------------------//
+  const [tables, setTables] = useState([]);
+  const [drinks, setDrinks] = useState([]);
+
+  const {
+    agregarProductosAMesa: hookAgregarProductos,
+    actualizarPedidoMesa: hookActualizarPedido,
+    liberarMesa: hookLiberarMesa,
+    confirmarPago: hookConfirmarPago,
+    ocuparMesa: hookOcuparMesa,
+    calcularTotal,
+  } = useWaitressOrders(setTables, setMesaActiva, setOpenPago);
+
+  useEffect(() => {
+  const loadData = async () => {
+    try {
+      const tablesData = await getDrinkTables();
+      const ordersData = await getOrders();
+      const drinksData = await getDrinks();
+
+      setDrinks(drinksData);
+
+      const tablesWithOrders = tablesData.map((mesa) => {
+        const order = ordersData.find(
+          (o) => o.id_mesa === mesa.id && o.id_order_status !== 4
+        );
+
+        return {
+          ...mesa,
+          orderId: order?.id,
+          items: order // esto funciona para transformar los detalles del pedido en el formato que espera la UI
+            ? Object.values(
+                order.details.reduce((acc, detail) => {
+                  const nombre = detail.drink.name;
+                  const id = detail.drink.id;
+                  const cantidad = Number(detail.amount || 1);
+                  if (!acc[nombre]) {
+                    acc[nombre] = {
+                      id: id,
+                      nombre,
+                      precio: Number(detail.unit_price),
+                      cantidad: 0,
+                    };
+                  }
+
+                  acc[nombre].cantidad += cantidad;
+
+                  return acc;
+                }, {}),
+              )
+            : [],
+
+         color:
+            order && order.details.length > 0
+            ? "yellow"
+            : mesa.status === 1
+            ? "green"
+            : "red",
+        };
+      });
+
+      setTables(tablesWithOrders);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    }
+  };
+
+  loadData();
+}, []);
 
   const estados = ["Todas", "Libre", "En consumo", "Pendiente"];
 
@@ -47,62 +119,16 @@ export default function WaitressPage() {
     }
   };
 
-  const calcularTotal = (items) =>
-    items.reduce((acc, item) => acc + item.precio, 0);
+  // 🔥 WRAPPERS PARA FUNCIONES DEL HOOK
+  const agregarProductosAMesa = (mesaId, productos) => 
+    hookAgregarProductos(tables, mesaId, productos);
 
-  // 🔥 AGREGAR PRODUCTOS
-  const agregarProductosAMesa = (mesaId, productos) => {
-    setMesas((prev) =>
-      prev.map((mesa) =>
-        mesa.id === mesaId
-          ? {
-              ...mesa,
-              items: [...mesa.items, ...productos],
-              estado: "En consumo",
-              color: "yellow",
-              pedido: "En consumo",
-            }
-          : mesa,
-      ),
-    );
-  };
+  const actualizarPedidoMesa = (mesaId, nuevosProductos) => 
+    hookActualizarPedido(tables, mesaId, nuevosProductos);
 
-  // 🔥 ACTUALIZAR PEDIDO (desde editar)
-  const actualizarPedidoMesa = (mesaId, nuevosProductos) => {
-    setMesas((prev) =>
-      prev.map((mesa) =>
-        mesa.id === mesaId
-          ? {
-              ...mesa,
-              items: nuevosProductos,
-              estado: nuevosProductos.length ? "En consumo" : "Libre",
-              color: nuevosProductos.length ? "yellow" : "green",
-              pedido: nuevosProductos.length
-                ? "Pedido actualizado"
-                : "Sin pedido",
-            }
-          : mesa,
-      ),
-    );
-  };
+  const liberarMesa = (id) => hookLiberarMesa(tables, id);
 
-  // 🔥 LIBERAR MESA
-  const liberarMesa = (id) => {
-    setMesas((prev) =>
-      prev.map((mesa) =>
-        mesa.id === id
-          ? {
-              ...mesa,
-              estado: "Libre",
-              color: "green",
-              pedido: "Sin pedido",
-              items: [],
-            }
-          : mesa,
-      ),
-    );
-    setMesaActiva(null);
-  };
+  const confirmarPago = (metodoPago) => hookConfirmarPago(tables, metodoPago);
 
   const abrirConfirmacionLiberar = (id) => {
     showModalConfirmation({
@@ -120,22 +146,8 @@ export default function WaitressPage() {
     });
   };
 
-  // 🔥 OCUPAR
-  const ocuparMesa = (id) => {
-    setMesas((prev) =>
-      prev.map((mesa) =>
-        mesa.id === id
-          ? {
-              ...mesa,
-              estado: "En consumo",
-              color: "yellow",
-              pedido: "Nuevo pedido",
-            }
-          : mesa,
-      ),
-    );
-
-    setMesaActiva(id);
+  const ocuparMesa = async (id) => {
+    await hookOcuparMesa(tables, id);
     setOpenModal(true);
   };
 
@@ -146,9 +158,16 @@ export default function WaitressPage() {
   };
 
   const mesasFiltradas =
-    filtro === "Todas" ? mesas : mesas.filter((m) => m.estado === filtro);
-
-  const mesaActual = mesas.find((m) => m.id === mesaActiva);
+    filtro === "Todas"
+      ? tables
+      : tables.filter((m) =>
+          filtro === "Libre"
+            ? m.color === "green"
+          : filtro === "En consumo"
+          ? m.color === "yellow"
+          : m.color === "red",
+        );
+  const mesaActual = tables.find((m) => m.id === mesaActiva);
 
   return (
     <ProtectedRoute allowedRoles={["2", "1"]}>
@@ -181,73 +200,59 @@ export default function WaitressPage() {
               key={mesa.id}
               className="rounded-2xl border border-yellow-400/20 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden"
             >
-              <div
-                className="flex justify-between items-center px-4 py-5 cursor-pointer"
-                onClick={() =>
-                  setMesaActiva(mesaActiva === mesa.id ? null : mesa.id)
-                }
-              >
-                <div>
-                  <h2 className="text-lg font-bold">Mesa {mesa.id}</h2>
-                  <p className="text-xs text-gray-400">Pedido: {mesa.pedido}</p>
-                </div>
+              <div>
+                <h2 className="text-lg font-bold">Mesa {mesa.id}</h2>
+                <p className="text-xs text-gray-400">Pedido: {mesa.name}</p>
+              </div>
 
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <span
                     className={`px-2 py-1 rounded-full text-xs border ${getBadgeStyles(
                       mesa.color,
                     )}`}
                   >
-                    {mesa.estado}
+                    {mesa.items.length > 0
+                      ? "En consumo"
+                      : mesa.status === 1
+                      ? "Libre"
+                      : "Pendiente"}
                   </span>
 
-                  <motion.div
-                    animate={{ rotate: mesaActiva === mesa.id ? 180 : 0 }}
-                  >
-                    <ChevronDown size={20} />
-                  </motion.div>
-                </div>
+                <motion.div
+                  animate={{ rotate: mesaActiva === mesa.id ? 180 : 0 }}
+                >
+                  <ChevronDown size={20} />
+                </motion.div>
               </div>
 
-              <AnimatePresence>
-                {mesaActiva === mesa.id && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="border-t border-yellow-400/20 px-4 py-4 space-y-3 text-sm">
-                      {mesa.items.length === 0 ? (
-                        <p className="text-gray-400">No hay consumos activos</p>
-                      ) : (
-                        <>
-                          {mesa.items.map((item, i) => (
-                            <div
-                              key={i}
-                              className="flex justify-between text-gray-300"
-                            >
-                              <span>{item.nombre}</span>
-                              <span>${item.precio.toLocaleString()}</span>
-                            </div>
-                          ))}
+            <AnimatePresence>
+              {mesaActiva === mesa.id && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="border-t border-yellow-400/20 px-4 py-4 space-y-3 text-sm">
+                    {mesa.items.length === 0 ? (
+                      <p className="text-gray-400">No hay consumos activos</p>
+                    ) : (
+                      <>
+                        {mesa.items.map((item, i) => ( 
+                          <div
+                            key={i}
+                            className="flex justify-between text-gray-300"
+                          >
+                            <span>
+                              {item.nombre} {item.cantidad ? `x${item.cantidad}` : ""}
+                            </span>
 
-                          <div className="flex gap-3 pt-4">
-                            <button
-                              onClick={() => abrirEditarPedido(mesa)}
-                              className="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-400/40 text-blue-400 text-xs"
-                            >
-                              ✏️ Editar
-                            </button>
-
-                            <button
-                              onClick={() =>
-                                cancelarPedidoConfirmacion(mesa.id)
-                              }
-                              className="px-4 py-2 rounded-xl bg-red-500/20 border border-red-400/40 text-red-400 text-xs"
-                            >
-                              ❌ Cancelar Pedido
-                            </button>
+                            <span>
+                              $
+                              {(
+                              Number(item.precio) * (item.cantidad ? item.cantidad : 1)
+                              ).toLocaleString()}
+                            </span>
                           </div>
                         </>
                       )}
@@ -315,40 +320,50 @@ export default function WaitressPage() {
                   >
                     ➕ Ocupar Mesa
                   </button>
-                </>
-              )}
-            </div>
-          </motion.div>
-        )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="text-xl font-bold text-green-400">Disponible</p>
+                </div>
 
-        {/* MODALES */}
-        <PedidoModal
-          isOpen={openModal}
-          onClose={() => setOpenModal(false)}
-          mesaId={mesaActual?.id}
-          productosDB={productosDB}
-          onAgregarProductos={agregarProductosAMesa}
-        />
+                <button
+                  onClick={() => ocuparMesa(mesaActual.id)}
+                  className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
+                >
+                  ➕ Ocupar Mesa
+                </button>
+              </>
+            )}
+          </div>
+        </motion.div>
+      )}
 
-        <ModalPago
-          abierto={openPago}
-          onClose={() => setOpenPago(false)}
-          total={calcularTotal(mesaActual?.items || [])}
-          descripcion="Pedido completo"
-          onConfirmarPago={() => {
-            if (mesaActual) liberarMesa(mesaActual.id);
-            setOpenPago(false);
-          }}
-        />
+      {/* MODALES */}
+      <PedidoModal
+        isOpen={openModal}
+        onClose={() => setOpenModal(false)}
+        mesaId={mesaActual?.id}
+        productosDB={drinks}
+        onAgregarProductos={agregarProductosAMesa}
+      />
 
-        <ModalEditPedidos
-          isOpen={openEditar}
-          onClose={() => setOpenEditar(false)}
-          mesa={mesaEditando}
-          productosDB={productosDB}
-          onGuardarCambios={actualizarPedidoMesa}
-        />
-      </div>
-    </ProtectedRoute>
+      <ModalPago
+        abierto={openPago}      
+        onClose={() => setOpenPago(false)}
+        total={calcularTotal(mesaActual?.items || [])}
+        descripcion="Pedido completo"
+        onConfirmarPago={confirmarPago}
+      />
+
+      <ModalEditPedidos
+        isOpen={openEditar}
+        onClose={() => setOpenEditar(false)}
+        mesa={mesaEditando}
+        productosDB={drinks}
+        onGuardarCambios={actualizarPedidoMesa}
+      />
+    </div>
   );
 }
