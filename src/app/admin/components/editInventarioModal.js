@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { X, Plus, Minus, Upload } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
+import { getCategories, createInventory } from "../hooks/inventory";
 
 export default function EditInventarioModal({
   isOpen,
@@ -12,21 +13,58 @@ export default function EditInventarioModal({
   onSave,
   selectedProduct,
 }) {
-  const [formData, setFormData] = useState({});
-  // Eliminados estados individuales, todo se maneja con formData
+  const [formData, setFormData] = useState({
+    name: "",
+    url_img: "",
+    price: 0,
+    description: "",
+    amount: 0,
+    category: 0,
+  });
   const [tooltip, setTooltip] = useState(null);
+  // Si en el futuro hay más categorías, aquí se pueden cargar
+  const [categories, setCategories] = useState([]);
 
-  // Eliminado useEffect de estados individuales
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    const loadCategories = async () => {
+      try {
+        const data = await getCategories({ signal });
+        setCategories(data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+
+    loadCategories();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedProduct) {
+      // Buscar el id de la categoría a partir del nombre si es necesario
+      let categoryId = selectedProduct.category;
+      if (
+        !categoryId &&
+        selectedProduct.category_name &&
+        categories.length > 0
+      ) {
+        const found = categories.find(
+          (cat) => cat.name === selectedProduct.category_name,
+        );
+        categoryId = found ? found.id : 0;
+      }
       setFormData({
-        name: selectedProduct.name,
-        url_img: selectedProduct.url_img,
-        price: selectedProduct.price,
-        description: selectedProduct.description,
-        amount: selectedProduct.amount,
-        category: selectedProduct.category_name,
+        name: selectedProduct.name || "",
+        url_img: selectedProduct.url_img || "",
+        price: selectedProduct.price ?? 0,
+        description: selectedProduct.description || "",
+        amount: selectedProduct.amount ?? 0,
+        category: categoryId || 0,
       });
     } else {
       setFormData({
@@ -35,15 +73,16 @@ export default function EditInventarioModal({
         price: 0,
         description: "",
         amount: 0,
-        category: "",
+        category: 0,
       });
     }
-  }, [selectedProduct]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProduct, categories]);
 
   /* ================= FORMAT ================= */
 
   const formatNumber = (num) => {
-    if (!num && num !== 0) return "";
+    if (typeof num !== "number" || isNaN(num)) return "";
     return num.toLocaleString("es-CO");
   };
 
@@ -98,6 +137,19 @@ export default function EditInventarioModal({
     });
 
     if (result.isConfirmed) {
+      const response = await createInventory({ ...formData });
+      if (response instanceof Error) {
+        await Swal.fire({
+          title: "Error",
+          text: response.message,
+          icon: "error",
+          background: "#18181b",
+          color: "#fff",
+        });
+        console.log(formData);
+        return;
+      }
+
       onSave({ ...formData });
 
       await Swal.fire({
@@ -119,26 +171,24 @@ export default function EditInventarioModal({
 
   const handleQuantityChange = (e) => {
     const value = e.target.value.replace(/\D/g, "");
-    setFormData({ ...formData, amount: Number(value) });
+    setFormData((prev) => ({ ...prev, amount: Number(value) }));
   };
 
   const handlePriceChange = (e) => {
     const value = e.target.value.replace(/\D/g, "");
-    setFormData({ ...formData, price: Number(value) });
+    setFormData((prev) => ({ ...prev, price: Number(value) }));
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     if (!file.type.startsWith("image/")) {
       showTooltip("El archivo debe ser una imagen");
       return;
     }
-
     const reader = new FileReader();
     reader.onloadend = () =>
-      setFormData({ ...formData, url_img: reader.result });
+      setFormData((prev) => ({ ...prev, url_img: reader.result }));
     reader.readAsDataURL(file);
   };
 
@@ -146,6 +196,10 @@ export default function EditInventarioModal({
     if (e.key === "Enter") {
       confirmSave();
     }
+  };
+
+  const handleCategoryChange = (e) => {
+    setFormData((prev) => ({ ...prev, category: e.target.value }));
   };
 
   // Ya no se usa isValid, todo se valida con validate()
@@ -206,6 +260,28 @@ export default function EditInventarioModal({
               }
               className="w-2/3 pl-2 bg-transparent border border-yellow-600/20 rounded-lg py-1 text-yellow-500 focus:outline-none focus:border-yellow-500"
             />
+
+            {/* CATEGORIAS */}
+
+            <div>
+              <label className="text-gray-400 mb-2 block">Categoría:</label>
+              <select
+                name="category_name"
+                value={formData.category}
+                onChange={handleCategoryChange}
+                className="w-full bg-transparent border border-yellow-600/20 rounded-lg py-2 px-3 text-gray-400 focus:outline-none focus:border-yellow-500"
+              >
+                <option value="">Seleccionar categoría</option>
+                {categories.map((category) => (
+                  <option
+                    key={category.id || category.name}
+                    value={category.id}
+                  >
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* CANTIDAD */}
             <div>

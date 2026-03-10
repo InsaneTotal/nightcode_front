@@ -136,11 +136,9 @@ export default function InventarioView() {
           setSelectedProduct(null);
           setIsModalOpen(false);
         }}
-        onSave={(message) => {
+        onSave={() => {
           setIsModalOpen(false);
           setSelectedProduct(null);
-          setCreationMessage(message);
-          setShowAlert(true);
         }}
         selectedProduct={selectedProduct}
         // updateInventory={ShowUpdatedInventory}
