@@ -128,7 +128,8 @@ export default function WaitressPage() {
 
   const liberarMesa = (id) => hookLiberarMesa(tables, id);
 
-  const confirmarPago = (metodoPago) => hookConfirmarPago(tables, metodoPago);
+  const confirmarPago = (metodoPago) =>
+    hookConfirmarPago(tables, mesaActiva, metodoPago);
 
   const abrirConfirmacionLiberar = (id) => {
     showModalConfirmation({
@@ -146,10 +147,34 @@ export default function WaitressPage() {
     });
   };
 
-  const ocuparMesa = async (id) => {
-    await hookOcuparMesa(tables, id);
+  const ocuparMesa = (id) => {
+    setMesaActiva(id);
     setOpenModal(true);
   };
+
+  // me ayuda a (restando lo que está en consumo en otras mesas)
+  const calcularStockDisponible = () => {
+    return drinks.map((drink) => {
+      let totalEnConsumo = 0;
+
+      // Suma cantidades en consumo de todas las mesas menos la mesa actual
+      tables.forEach((mesa) => {
+        if (mesa.id !== mesaActiva && mesa.items.length > 0) {
+          const item = mesa.items.find((i) => i.id === drink.id);
+          if (item) {
+            totalEnConsumo += item.cantidad;
+          }
+        }
+      });
+
+      return {
+        ...drink,
+        amount: drink.amount - totalEnConsumo, 
+      };
+    });
+  };
+
+  const drinksDisponibles = calcularStockDisponible();
 
   // 🔥 EDITAR
   const abrirEditarPedido = (mesa) => {
@@ -294,7 +319,7 @@ export default function WaitressPage() {
           animate={{ y: 0 }}
           className="fixed bottom-0 left-0 w-full bg-black/95 border-t border-yellow-400/20 px-4 py-5 z-40"
         >
-          <div className="max-w-2xl mx-auto flex justify-between items-center">
+          <div className="max-w-2xl mx-auto flex flex-wrap justify-between items-center gap-3">
             {mesaActual.items.length > 0 ? (
               <>
                 <div>
@@ -337,7 +362,7 @@ export default function WaitressPage() {
 
                 <button
                   onClick={() => ocuparMesa(mesaActual.id)}
-                  className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
+                  className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold w-full sm:w-auto"
                 >
                   ➕ Ocupar Mesa
                 </button>
@@ -352,7 +377,7 @@ export default function WaitressPage() {
         isOpen={openModal}
         onClose={() => setOpenModal(false)}
         mesaId={mesaActual?.id}
-        productosDB={drinks}
+        productosDB={drinksDisponibles}
         onAgregarProductos={agregarProductosAMesa}
       />
 
@@ -368,7 +393,7 @@ export default function WaitressPage() {
         isOpen={openEditar}
         onClose={() => setOpenEditar(false)}
         mesa={mesaEditando}
-        productosDB={drinks}
+        productosDB={drinksDisponibles}
         onGuardarCambios={actualizarPedidoMesa}
       />
     </div>

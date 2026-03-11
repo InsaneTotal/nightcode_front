@@ -12,6 +12,10 @@ export default function InventarioView() {
   const [products, setProducts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // mensaje de creación/actualización y visibilidad de alerta
+  const [creationMessage, setCreationMessage] = useState("");
+  const [showAlert, setShowAlert] = useState(false);
+
   useEffect(() => {
     const loadInventory = async () => {
       try {
@@ -23,6 +27,14 @@ export default function InventarioView() {
     };
     loadInventory();
   }, []);
+
+  // oculta la alerta automáticamente después de unos segundos
+  useEffect(() => {
+    if (showAlert) {
+      const timer = setTimeout(() => setShowAlert(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showAlert]);
 
   // 🔥 Producto seleccionado para editar
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -66,6 +78,14 @@ export default function InventarioView() {
             setIsModalOpen(true);
           }}
         />
+
+        {/* alerta temporal */}
+        {showAlert && (
+          <div className="fixed top-20 right-4 bg-green-600 text-white px-4 py-2 rounded shadow">
+            {creationMessage}
+          </div>
+        )
+        }
       </div>
 
       <div className="space-y-8">
@@ -136,10 +156,31 @@ export default function InventarioView() {
           setSelectedProduct(null);
           setIsModalOpen(false);
         }}
-        onSave={(message) => {
+        onSave={async (product) => { //esto maneja tanto la creación como la actualización de productos
+          try {
+            let updated;
+            if (selectedProduct) {
+              const payload = { ...product };
+              if (payload.url_img === selectedProduct.url_img) {
+                delete payload.url_img;
+              }
+              console.log("updating product", payload);
+              updated = await updateInventory(selectedProduct.id, payload);
+            setProducts((prev) =>
+              prev.map((p) => (p.id === updated.id ? updated : p)),
+            );
+            setCreationMessage(`Producto ${updated.name} actualizado`);
+          } else {
+              updated = product;
+              setProducts((prev) => [...prev, updated]);
+              setCreationMessage(`Producto ${updated.name} agregado`);
+            }
+          } catch (error) {
+            console.error("Error saving product:", error);
+            setCreationMessage("Error al guardar producto");
+          }
           setIsModalOpen(false);
           setSelectedProduct(null);
-          setCreationMessage(message);
           setShowAlert(true);
         }}
         selectedProduct={selectedProduct}

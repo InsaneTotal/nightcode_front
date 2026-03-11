@@ -26,7 +26,7 @@ export default function EditInventarioModal({
         price: selectedProduct.price,
         description: selectedProduct.description,
         amount: selectedProduct.amount,
-        category: selectedProduct.category_name,
+        category: selectedProduct.category || selectedProduct.category_id || "",
       });
     } else {
       setFormData({
@@ -97,8 +97,13 @@ export default function EditInventarioModal({
       },
     });
 
-    if (result.isConfirmed) {
-      onSave({ ...formData });
+    if (result.isConfirmed) { // Solo llama a onSave si el usuario confirma, y pasa todo el formData
+      const payload = { ...formData };
+      if (selectedProduct && typeof payload.category === "string") {
+        payload.category = selectedProduct.category || selectedProduct.category_id;
+      }
+
+      onSave(payload);
 
       await Swal.fire({
         title: "Actualizado",

@@ -1,26 +1,24 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const router = useRouter();
-
-  const safeAllowedRoles = useMemo(() => allowedRoles || [], [allowedRoles]);
-  const storedRole =
-    typeof window !== "undefined" ? localStorage.getItem("id_role") : null;
-  const userRole = String(storedRole ?? "");
-  const isAuthorized = safeAllowedRoles.map(String).includes(userRole);
+  const [authorized, setAuthorized] = useState(null);
 
   useEffect(() => {
-    if (!storedRole || !isAuthorized) {
+    const storedRole = localStorage.getItem("id_role");
+
+    if (!storedRole || !allowedRoles.includes(storedRole)) {
       router.replace("/auth/login");
+      setAuthorized(false);
+    } else {
+      setAuthorized(true);
     }
-  }, [router, storedRole, isAuthorized]);
+    }, [router, allowedRoles]);
 
-  if (!storedRole || !isAuthorized) {
-    return null;
-  }
+  if (authorized === null) return null;
 
-  return <>{children}</>;
+  return authorized ? children : null;
 }
