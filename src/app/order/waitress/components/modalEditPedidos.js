@@ -78,7 +78,7 @@ export default function ModalEditPedidos({
             </h2>
 
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {productosDB.map((producto) => {
+              {productosDB.filter(producto => producto.amount > 0).map((producto) => {
                 const seleccionado = productosSeleccionados.find(
                   (p) => p.id === producto.id,
                 );
@@ -95,7 +95,7 @@ export default function ModalEditPedidos({
                     <div className="flex-1"> 
                       <span>{producto.name}</span>
                       <div className="text-xs text-gray-400">
-                        ${Number(producto.price).toLocaleString()}
+                        ${Number(producto.price).toLocaleString()} - Stock: {producto.amount}
                       </div>
                     </div>
 
@@ -127,15 +127,22 @@ export default function ModalEditPedidos({
                         </span>
                         <button
                           onClick={() => {
-                            setProductosSeleccionados((prev) =>
-                              prev.map((p) =>
-                                p.id === producto.id
-                                  ? { ...p, cantidad: p.cantidad + 1 }
-                                  : p
-                              )
-                            );
+                            if (seleccionado.cantidad < producto.amount) { // No permitir aumentar más que el stock disponible
+                              setProductosSeleccionados((prev) =>
+                                prev.map((p) =>
+                                  p.id === producto.id
+                                    ? { ...p, cantidad: p.cantidad + 1 }
+                                    : p
+                                )
+                              );
+                            }
                           }}
-                          className="w-6 h-6 rounded bg-green-500/20 text-green-400 flex items-center justify-center text-sm"
+                          disabled={seleccionado.cantidad >= producto.amount} // Deshabilitar si la cantidad es igual o mayor al stock disponible
+                          className={`w-6 h-6 rounded flex items-center justify-center text-sm ${
+                            seleccionado.cantidad >= producto.amount
+                              ? "bg-gray-500/20 text-gray-400 cursor-not-allowed"
+                              : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                          }`}
                         >
                           +
                         </button>
