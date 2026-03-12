@@ -156,32 +156,9 @@ export default function InventarioView() {
           setSelectedProduct(null);
           setIsModalOpen(false);
         }}
-        onSave={async (product) => { //esto maneja tanto la creación como la actualización de productos
-          try {
-            let updated;
-            if (selectedProduct) {
-              const payload = { ...product };
-              if (payload.url_img === selectedProduct.url_img) {
-                delete payload.url_img;
-              }
-              console.log("updating product", payload);
-              updated = await updateInventory(selectedProduct.id, payload);
-            setProducts((prev) =>
-              prev.map((p) => (p.id === updated.id ? updated : p)),
-            );
-            setCreationMessage(`Producto ${updated.name} actualizado`);
-          } else {
-              updated = product;
-              setProducts((prev) => [...prev, updated]);
-              setCreationMessage(`Producto ${updated.name} agregado`);
-            }
-          } catch (error) {
-            console.error("Error saving product:", error);
-            setCreationMessage("Error al guardar producto");
-          }
+        onSave={() => {
           setIsModalOpen(false);
           setSelectedProduct(null);
-          setShowAlert(true);
         }}
         selectedProduct={selectedProduct}
         // updateInventory={ShowUpdatedInventory}
