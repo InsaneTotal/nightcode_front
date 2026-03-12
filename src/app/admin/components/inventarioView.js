@@ -12,6 +12,10 @@ export default function InventarioView() {
   const [products, setProducts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // mensaje de creación/actualización y visibilidad de alerta
+  const [creationMessage, setCreationMessage] = useState("");
+  const [showAlert, setShowAlert] = useState(false);
+
   useEffect(() => {
     const loadInventory = async () => {
       try {
@@ -23,6 +27,14 @@ export default function InventarioView() {
     };
     loadInventory();
   }, []);
+
+  // oculta la alerta automáticamente después de unos segundos
+  useEffect(() => {
+    if (showAlert) {
+      const timer = setTimeout(() => setShowAlert(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showAlert]);
 
   // 🔥 Producto seleccionado para editar
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -66,6 +78,14 @@ export default function InventarioView() {
             setIsModalOpen(true);
           }}
         />
+
+        {/* alerta temporal */}
+        {showAlert && (
+          <div className="fixed top-20 right-4 bg-green-600 text-white px-4 py-2 rounded shadow">
+            {creationMessage}
+          </div>
+        )
+        }
       </div>
 
       <div className="space-y-8">

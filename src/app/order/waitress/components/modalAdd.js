@@ -17,9 +17,10 @@ export default function PedidoModal({
 
   if (!isOpen) return null;
 
-  // 🔥 FILTRO EN TIEMPO REAL
+  // filtra productos por busqueda y stock
   const productosFiltrados = productosDB.filter((producto) =>
-    producto.name.toLowerCase().includes(search.toLowerCase()),
+    producto.name.toLowerCase().includes(search.toLowerCase()) &&
+    producto.amount > 0,
   );
 
   // 🔥 FUNCIONES DE CANTIDAD
@@ -172,8 +173,13 @@ export default function PedidoModal({
                   </span>
 
                   <button
-                    onClick={() => aumentar(producto.id)}
-                    className="bg-green-600 hover:bg-green-500 w-8 h-8 rounded-lg"
+                    onClick={() => aumentar(producto.id)} // se deshabilita si no hay en stock
+                    disabled={cantidades[producto.id] >= producto.amount}
+                    className={`w-8 h-8 rounded-lg ${
+                      cantidades[producto.id] >= producto.amount
+                        ? "bg-gray-600 cursor-not-allowed opacity-50"
+                        : "bg-green-600 hover:bg-green-500"
+                    }`}
                   >
                     +
                   </button>

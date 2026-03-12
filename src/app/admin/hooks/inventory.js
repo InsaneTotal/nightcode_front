@@ -32,7 +32,15 @@ export async function updateInventory(id, updatedData) {
   );
 
   if (!response.ok) {
-    throw new Error("Failed to update inventory");
+    let errorText = "Failed to update inventory";
+    try {
+      const errData = await response.json();
+      console.error("inventory update error response", errData);
+      errorText = errData.detail || JSON.stringify(errData);
+    } catch (e) {
+      console.error("error parsing inventory error body", e);
+    }
+    throw new Error(errorText);
   }
 
   const data = await response.json();

@@ -144,73 +144,72 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
 
 
 
-  const confirmarPago = async (tables, metodoPago) => { //esto confirma el pago de una mesa, actualizando el estado de la orden a pagada y luego actualizando el estado de la mesa a libre
-    try {
-      const mesaActual = tables.find(m => m.items && m.items.length > 0);
-      if (!mesaActual || !mesaActual.orderId) {
-        return;
-      }
+const confirmarPago = async (tables, mesaActiva, metodoPago) => {
+  try {
 
-      const response = await authFetch(
-        `http://127.0.0.1:8000/api/order/orders/${mesaActual.orderId}/`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id_payment: metodoPago,
-            id_order_status: 4,
-          }),
-        }
-      );
+    const mesa = tables.find((m) => m.id === mesaActiva);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error("Error del servidor:", data);
-        return;
-      }
-
-      const [tablesData, ordersData] = await Promise.all([
-        getDrinkTables(),
-        getOrders()
-      ]);
-
-      const tablesWithOrders = transformOrdersToTables(tablesData, ordersData);
-      setTables(tablesWithOrders);
-      setOpenPago(false);
-    } catch (error) {
-      console.error("Error al pagar:", error);
+    if (!mesa || !mesa.orderId) {
+      console.error("Mesa sin orden activa");
+      return;
     }
-  };
 
+    const response = await authFetch(
+      `http://127.0.0.1:8000/api/order/orders/${mesa.orderId}/pay/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id_payment: metodoPago,
+        }),
+      }
+    );
 
-
-  const ocuparMesa = async (tables, id) => { //esto ocupa una mesa, creando una nueva orden y actualizando el estado de la mesa a en consumo
-    try {
-      const newOrder = await createOrder(id);
-
-      setTables((prev) =>
-        prev.map((mesa) =>
-          mesa.id === id
-            ? {
-                ...mesa,
-                estado: "En consumo",
-                color: "yellow",
-                pedido: "Nuevo pedido",
-                orderId: newOrder.id,
-                items: [],
-              }
-            : mesa,
-        ),
-      );
-
-      setMesaActiva(id);
-    } catch (error) {
-      console.error("Error ocupando mesa:", error);
+    if (!response.ok) {
+      throw new Error("Error al pagar");
     }
-  };
+
+    const [tablesData, ordersData] = await Promise.all([
+      getDrinkTables(),
+      getOrders(),
+    ]);
+
+    const tablesWithOrders = transformOrdersToTables(tablesData, ordersData);
+    setTables(tablesWithOrders);
+
+    setMesaActiva(null);
+    setOpenPago(false);
+
+  } catch (error) {
+    console.error("Error al pagar:", error);
+  }
+};
+
+
+  const ocuparMesa = async (tables, id) => {
+  try {
+    setTables((prev) =>
+      prev.map((mesa) =>
+        mesa.id === id
+          ? {
+              ...mesa,
+              estado: "En consumo",
+              color: "yellow",
+              pedido: "Nuevo pedido",
+              orderId: null, 
+              items: [],
+            }
+          : mesa,
+      ),
+    );
+
+    setMesaActiva(id);
+  } catch (error) {
+    console.error("Error ocupando mesa:", error);
+  }
+};
 
   return {
     calcularTotal,

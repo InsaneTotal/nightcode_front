@@ -129,7 +129,8 @@ export default function WaitressPage() {
 
   const liberarMesa = (id) => hookLiberarMesa(tables, id);
 
-  const confirmarPago = (metodoPago) => hookConfirmarPago(tables, metodoPago);
+  const confirmarPago = (metodoPago) =>
+    hookConfirmarPago(tables, mesaActiva, metodoPago);
 
   const abrirConfirmacionLiberar = (id) => {
     showModalConfirmation({
@@ -147,10 +148,34 @@ export default function WaitressPage() {
     });
   };
 
-  const ocuparMesa = async (id) => {
-    await hookOcuparMesa(tables, id);
+  const ocuparMesa = (id) => {
+    setMesaActiva(id);
     setOpenModal(true);
   };
+
+  // me ayuda a (restando lo que está en consumo en otras mesas)
+  const calcularStockDisponible = () => {
+    return drinks.map((drink) => {
+      let totalEnConsumo = 0;
+
+      // Suma cantidades en consumo de todas las mesas menos la mesa actual
+      tables.forEach((mesa) => {
+        if (mesa.id !== mesaActiva && mesa.items.length > 0) {
+          const item = mesa.items.find((i) => i.id === drink.id);
+          if (item) {
+            totalEnConsumo += item.cantidad;
+          }
+        }
+      });
+
+      return {
+        ...drink,
+        amount: drink.amount - totalEnConsumo, 
+      };
+    });
+  };
+
+  const drinksDisponibles = calcularStockDisponible();
 
   // 🔥 EDITAR
   const abrirEditarPedido = (mesa) => {
@@ -195,11 +220,17 @@ export default function WaitressPage() {
             ))}
           </div>
 
-          {/* MESAS */}
-          {mesasFiltradas.map((mesa) => (
-            <motion.div
-              key={mesa.id}
-              className="rounded-2xl border border-yellow-400/20 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden"
+        {/* MESAS */}
+        {mesasFiltradas.map((mesa) => (
+          <motion.div
+            key={mesa.id}
+            className="rounded-2xl border border-yellow-400/20 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden"
+          >
+            <div
+              className="flex justify-between items-center px-4 py-5 cursor-pointer"
+              onClick={() =>
+                setMesaActiva(mesaActiva === mesa.id ? null : mesa.id)
+              }
             >
               <div
                 className="flex justify-between items-center px-4 py-5 cursor-pointer"
@@ -232,6 +263,7 @@ export default function WaitressPage() {
                   </motion.div>
                 </div>
               </div>
+            </div>
 
               <AnimatePresence>
                 {mesaActiva === mesa.id && (
@@ -283,71 +315,72 @@ export default function WaitressPage() {
                               ❌ Cancelar Pedido
                             </button>
                           </div>
-                        </>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          ))}
-        </div>
+                        ))}
 
-        {/* 🔥 BARRA INFERIOR */}
-        {mesaActual && (
-          <motion.div
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            className="fixed bottom-0 left-0 w-full bg-black/95 border-t border-yellow-400/20 px-4 py-5 z-40"
-          >
-            <div className="max-w-2xl mx-auto flex justify-between items-center">
-              {mesaActual.items.length > 0 ? (
-                <>
-                  <div>
-                    <p className="text-xs text-gray-400">
-                      Total Mesa {mesaActual.id}
-                    </p>
-                    <p className="text-2xl font-extrabold text-yellow-400">
-                      ${calcularTotal(mesaActual.items).toLocaleString()}
-                    </p>
+                        <div className="flex gap-3 pt-4">
+                          <button
+                            onClick={() => abrirEditarPedido(mesa)}
+                            className="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-400/40 text-blue-400 text-xs"
+                          >
+                            ✏️ Editar
+                          </button>
+
+                          <button
+                            onClick={() => cancelarPedidoConfirmacion(mesa.id)}
+                            className="px-4 py-2 rounded-xl bg-red-500/20 border border-red-400/40 text-red-400 text-xs"
+                          >
+                            ❌ Cancelar Pedido
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        ))}
+      </div>
 
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setOpenPago(true)}
-                      className="px-6 py-3 rounded-2xl bg-yellow-500 text-black font-bold"
-                    >
-                      💳 Pagar
-                    </button>
+      {/* 🔥 BARRA INFERIOR */}
+      {mesaActual && (
+        <motion.div
+          initial={{ y: 100 }}
+          animate={{ y: 0 }}
+          className="fixed bottom-0 left-0 w-full bg-black/95 border-t border-yellow-400/20 px-4 py-5 z-40"
+        >
+          <div className="max-w-2xl mx-auto flex flex-wrap justify-between items-center gap-3">
+            {mesaActual.items.length > 0 ? (
+              <>
+                <div>
+                  <p className="text-xs text-gray-400">
+                    Total Mesa {mesaActual.id}
+                  </p>
+                  <p className="text-2xl font-extrabold text-yellow-400">
+                    ${calcularTotal(mesaActual.items).toLocaleString()}
+                  </p>
+                </div>
 
-                    <button
-                      onClick={() => setOpenModal(true)}
-                      className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
-                    >
-                      ➕ Agregar
-                    </button>
-
-                    <button
-                      onClick={() => abrirConfirmacionLiberar(mesaActual.id)}
-                      className="px-6 py-3 rounded-2xl bg-red-500 text-white font-bold"
-                    >
-                      🗑 Liberar
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <p className="text-xl font-bold text-green-400">
-                      Disponible
-                    </p>
-                  </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setOpenPago(true)}
+                    className="px-6 py-3 rounded-2xl bg-yellow-500 text-black font-bold"
+                  >
+                    💳 Pagar
+                  </button>
 
                   <button
-                    onClick={() => ocuparMesa(mesaActual.id)}
+                    onClick={() => setOpenModal(true)}
                     className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
                   >
-                    ➕ Ocupar Mesa
+                    ➕ Agregar
+                  </button>
+
+                  <button
+                    onClick={() => abrirConfirmacionLiberar(mesaActual.id)}
+                    className="px-6 py-3 rounded-2xl bg-red-500 text-white font-bold"
+                  >
+                    🗑 Liberar
                   </button>
                 </>
               )}

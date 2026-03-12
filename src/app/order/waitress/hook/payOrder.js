@@ -1,4 +1,4 @@
-import { authFetch } from "../../../../utils/authFetch"; // 🔥 NUEVO ARCHIVO PARA FUNCIONES DE PAGO
+import { authFetch } from "../../../../utils/authFetch";
 
 export async function getPayments() {
   const response = await authFetch(
@@ -12,17 +12,16 @@ export async function getPayments() {
   return await response.json();
 }
 
-export async function payOrder(orderId, paymentMethodId) { // 🔥 NUEVA FUNCIÓN PARA PAGAR ORDEN
+export async function payOrder(orderId, paymentMethodId) {
   const response = await authFetch(
-    `http://127.0.0.1:8000/api/order/orders/${orderId}/`,
+      `http://127.0.0.1:8000/api/order/orders/${orderId}/pay/`,
     {
-      method: "PATCH",
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        id_payment: paymentMethodId,
-        id_order_status: 2,
+        id_payment: paymentMethodId
       }),
     }
   );
