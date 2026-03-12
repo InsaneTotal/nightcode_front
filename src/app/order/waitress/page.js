@@ -171,7 +171,7 @@ export default function WaitressPage() {
   const mesaActual = tables.find((m) => m.id === mesaActiva);
 
   return (
-    <ProtectedRoute allowedRoles={["2", "1"]}>
+    <ProtectedRoute allowedRoles={["1", "2"]}>
       <div className="min-h-screen bg-linear-to-br from-black via-[#0b0b0b] to-black text-white px-4 pt-8 pb-32">
         <div className="max-w-2xl mx-auto space-y-6">
           <h1 className="text-2xl font-bold text-center text-yellow-400">
@@ -201,29 +201,36 @@ export default function WaitressPage() {
               key={mesa.id}
               className="rounded-2xl border border-yellow-400/20 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden"
             >
-              <div>
-                <h2 className="text-lg font-bold">Mesa {mesa.id}</h2>
-                <p className="text-xs text-gray-400">Pedido: {mesa.name}</p>
-              </div>
+              <div
+                className="flex justify-between items-center px-4 py-5 cursor-pointer"
+                onClick={() =>
+                  setMesaActiva(mesaActiva === mesa.id ? null : mesa.id)
+                }
+              >
+                <div>
+                  <h2 className="text-lg font-bold">Mesa {mesa.id}</h2>
+                  <p className="text-xs text-gray-400">Pedido: {mesa.name}</p>
+                </div>
 
-              <div className="flex items-center gap-3">
-                <span
-                  className={`px-2 py-1 rounded-full text-xs border ${getBadgeStyles(
-                    mesa.color,
-                  )}`}
-                >
-                  {mesa.items.length > 0
-                    ? "En consumo"
-                    : mesa.status === 1
-                      ? "Libre"
-                      : "Pendiente"}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs border ${getBadgeStyles(
+                      mesa.color,
+                    )}`}
+                  >
+                    {mesa.items.length > 0
+                      ? "En consumo"
+                      : mesa.status === 1
+                        ? "Libre"
+                        : "Pendiente"}
+                  </span>
 
-                <motion.div
-                  animate={{ rotate: mesaActiva === mesa.id ? 180 : 0 }}
-                >
-                  <ChevronDown size={20} />
-                </motion.div>
+                  <motion.div
+                    animate={{ rotate: mesaActiva === mesa.id ? 180 : 0 }}
+                  >
+                    <ChevronDown size={20} />
+                  </motion.div>
+                </div>
               </div>
 
               <AnimatePresence>
@@ -258,6 +265,24 @@ export default function WaitressPage() {
                               </span>
                             </div>
                           ))}
+
+                          <div className="flex gap-3 pt-4">
+                            <button
+                              onClick={() => abrirEditarPedido(mesa)}
+                              className="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-400/40 text-blue-400 text-xs"
+                            >
+                              ✏️ Editar
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                cancelarPedidoConfirmacion(mesa.id)
+                              }
+                              className="px-4 py-2 rounded-xl bg-red-500/20 border border-red-400/40 text-red-400 text-xs"
+                            >
+                              ❌ Cancelar Pedido
+                            </button>
+                          </div>
                         </>
                       )}
                     </div>
