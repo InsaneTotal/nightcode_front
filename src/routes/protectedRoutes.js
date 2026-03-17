@@ -1,24 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useApp } from "../context/AppContext";
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const router = useRouter();
-  const [authorized, setAuthorized] = useState(null);
+  const { usuario, authLoading } = useApp();
+  const currentRole = usuario?.role?.id;
+  const isAuthorized = allowedRoles.includes(String(currentRole || ""));
 
   useEffect(() => {
-    const storedRole = localStorage.getItem("id_role");
-
-    if (!storedRole || !allowedRoles.includes(storedRole)) {
+    if (!authLoading && !isAuthorized) {
       router.replace("/auth/login");
-      setAuthorized(false);
-    } else {
-      setAuthorized(true);
     }
-    }, [router, allowedRoles]);
+  }, [authLoading, isAuthorized, router]);
 
-  if (authorized === null) return null;
+  if (authLoading) return null;
 
-  return authorized ? children : null;
+  return isAuthorized ? children : null;
 }

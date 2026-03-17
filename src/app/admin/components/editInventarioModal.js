@@ -1,17 +1,22 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { X, Plus, Minus, Upload } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
-import { getCategories, createInventory } from "../hooks/inventory";
+import {
+  getCategories,
+  createInventory,
+  updateInventory,
+} from "../hooks/inventory";
 
 export default function EditInventarioModal({
   isOpen,
   onClose,
   onSave,
   selectedProduct,
+  isNewProduct,
 }) {
   const [formData, setFormData] = useState({
     name: "",
@@ -21,6 +26,7 @@ export default function EditInventarioModal({
     amount: 0,
     category: 0,
   });
+  const [imageChanged, setImageChanged] = useState(false);
   const [tooltip, setTooltip] = useState(null);
   // Si en el futuro hay más categorías, aquí se pueden cargar
   const [categories, setCategories] = useState([]);
@@ -58,6 +64,7 @@ export default function EditInventarioModal({
         );
         categoryId = found ? found.id : 0;
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         name: selectedProduct.name || "",
         url_img: selectedProduct.url_img || "",
@@ -66,6 +73,7 @@ export default function EditInventarioModal({
         amount: selectedProduct.amount ?? 0,
         category: categoryId || 0,
       });
+      setImageChanged(false);
     } else {
       setFormData({
         name: "",
@@ -75,8 +83,8 @@ export default function EditInventarioModal({
         amount: 0,
         category: 0,
       });
+      setImageChanged(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProduct, categories]);
 
   /* ================= FORMAT ================= */
@@ -105,6 +113,34 @@ export default function EditInventarioModal({
   };
 
   /* ================= SWEET ALERT CONFIRM ================= */
+  const showAlert = async (res) => {
+    if (res instanceof Error) {
+      await Swal.fire({
+        title: "Error",
+        text: res.message,
+        icon: "error",
+        background: "#18181b",
+        color: "#fff",
+      });
+
+      return;
+    }
+
+    onSave({ ...formData });
+
+    await Swal.fire({
+      title: "Actualizado",
+      text: res.message,
+      icon: "success",
+      background: "#18181b",
+      color: "#fff",
+      confirmButtonColor: "#16a34a",
+      timer: 1500,
+      showConfirmButton: false,
+    });
+
+    onClose();
+  };
 
   const confirmSave = async () => {
     if (formData.amount < 0) {
@@ -137,33 +173,21 @@ export default function EditInventarioModal({
     });
 
     if (result.isConfirmed) {
-      const response = await createInventory({ ...formData });
-      if (response instanceof Error) {
-        await Swal.fire({
-          title: "Error",
-          text: response.message,
-          icon: "error",
-          background: "#18181b",
-          color: "#fff",
-        });
-        console.log(formData);
-        return;
+      if (isNewProduct) {
+        const response = await createInventory({ ...formData });
+        await showAlert(response);
       }
 
-      onSave({ ...formData });
+      if (!isNewProduct) {
+        const payload = { ...formData };
 
-      await Swal.fire({
-        title: "Actualizado",
-        text: "El producto fue actualizado correctamente.",
-        icon: "success",
-        background: "#18181b",
-        color: "#fff",
-        confirmButtonColor: "#16a34a",
-        timer: 1500,
-        showConfirmButton: false,
-      });
+        if (!imageChanged) {
+          delete payload.url_img;
+        }
 
-      onClose();
+        const response = await updateInventory(selectedProduct.id, payload);
+        await showAlert(response);
+      }
     }
   };
 
@@ -187,8 +211,10 @@ export default function EditInventarioModal({
       return;
     }
     const reader = new FileReader();
-    reader.onloadend = () =>
+    reader.onloadend = () => {
+      setImageChanged(true);
       setFormData((prev) => ({ ...prev, url_img: reader.result }));
+    };
     reader.readAsDataURL(file);
   };
 
@@ -203,6 +229,20 @@ export default function EditInventarioModal({
   };
 
   // Ya no se usa isValid, todo se valida con validate()
+
+  const isLocalhostImage = (url) => {
+    if (!url) return false;
+    try {
+      const parsed = new URL(url);
+      return (
+        parsed.hostname === "localhost" ||
+        parsed.hostname === "127.0.0.1" ||
+        parsed.hostname === "::1"
+      );
+    } catch {
+      return false;
+    }
+  };
 
   return (
     <div
@@ -233,6 +273,7 @@ export default function EditInventarioModal({
                 width={200}
                 height={200}
                 className="h-56 object-contain"
+                unoptimized={isLocalhostImage(formData.url_img)}
               />
             </div>
 

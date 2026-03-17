@@ -4,9 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 import { loginUser } from "./hooks/loginLogic";
 import { useRouter } from "next/navigation";
+import { useApp } from "../../../context/AppContext";
 
 export default function Login() {
   const router = useRouter();
+  const { loadCurrentUser } = useApp();
   const [formData, setFormData] = useState({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,30 +29,36 @@ export default function Login() {
     if (result.error) {
       setError(result.error);
     } else {
-      const role = String(result.id_role ?? "");
-      localStorage.setItem("id_role", role);
+      localStorage.setItem("accessToken", result.access);
+      localStorage.setItem("refreshToken", result.refresh);
+
+      const currentUser = await loadCurrentUser();
+      const role = String(currentUser?.role?.id ?? "");
+
+      if (!currentUser) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        setError("No se pudo cargar el perfil del usuario.");
+        return;
+      }
 
       if (role === "1") {
-        localStorage.setItem("accessToken", result.access);
-        localStorage.setItem("refreshToken", result.refresh);
         router.replace("/admin/dashboard");
         return;
       }
 
       if (role === "2") {
-        localStorage.setItem("accessToken", result.access);
-        localStorage.setItem("refreshToken", result.refresh);
         router.replace("/order/waitress");
         return;
       }
 
       if (role === "3") {
-        localStorage.setItem("accessToken", result.access);
-        localStorage.setItem("refreshToken", result.refresh);
         router.replace("/UnderBar");
         return;
       }
 
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
       setError("Rol no reconocido para redirección.");
     }
   };
@@ -139,7 +147,10 @@ export default function Login() {
             {/* LINK REGISTER */}
             <p className="text-center text-sm text-gray-400 pt-4">
               ¿No tienes cuenta?{" "}
-              <a href="/auth/register" className="text-yellow-400 hover:underline">
+              <a
+                href="/auth/register"
+                className="text-yellow-400 hover:underline"
+              >
                 Regístrate aquí
               </a>
             </p>

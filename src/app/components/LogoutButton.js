@@ -1,13 +1,14 @@
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
+import { useApp } from "../../context/AppContext";
 
 export default function LogoutButton() {
   const router = useRouter();
+  const { cerrarSesion } = useApp();
+
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("id_role");
+    cerrarSesion();
     router.push("/auth/login");
   };
 

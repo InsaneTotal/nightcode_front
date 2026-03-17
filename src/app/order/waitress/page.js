@@ -344,39 +344,39 @@ export default function WaitressPage() {
         ))}
       </div>
 
-      {/* 🔥 BARRA INFERIOR */}
-      {mesaActual && (
-        <motion.div
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 w-full bg-black/95 border-t border-yellow-400/20 px-4 py-5 z-40"
-        >
-          <div className="max-w-2xl mx-auto flex flex-wrap justify-between items-center gap-3">
-            {mesaActual.items.length > 0 ? (
-              <>
-                <div>
-                  <p className="text-xs text-gray-400">
-                    Total Mesa {mesaActual.id}
-                  </p>
-                  <p className="text-2xl font-extrabold text-yellow-400">
-                    ${calcularTotal(mesaActual.items).toLocaleString()}
-                  </p>
-                </div>
+        {/* 🔥 BARRA INFERIOR */}
+        {mesaActual && (
+          <motion.div
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            className="fixed bottom-0 left-0 w-full bg-black/95 border-t border-yellow-400/20 px-4 py-5 z-40"
+          >
+            <div className="max-w-2xl mx-auto flex flex-wrap justify-between items-center gap-3">
+              {mesaActual.items.length > 0 ? (
+                <>
+                  <div>
+                    <p className="text-xs text-gray-400">
+                      Total Mesa {mesaActual.id}
+                    </p>
+                    <p className="text-2xl font-extrabold text-yellow-400">
+                      ${calcularTotal(mesaActual.items).toLocaleString()}
+                    </p>
+                  </div>
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setOpenPago(true)}
-                    className="px-6 py-3 rounded-2xl bg-yellow-500 text-black font-bold"
-                  >
-                    💳 Pagar
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setOpenPago(true)}
+                      className="px-6 py-3 rounded-2xl bg-yellow-500 text-black font-bold"
+                    >
+                      💳 Pagar
+                    </button>
 
-                  <button
-                    onClick={() => setOpenModal(true)}
-                    className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
-                  >
-                    ➕ Agregar
-                  </button>
+                    <button
+                      onClick={() => setOpenModal(true)}
+                      className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
+                    >
+                      ➕ Agregar
+                    </button>
 
                   <button
                     onClick={() => abrirConfirmacionLiberar(mesaActual.id)}
