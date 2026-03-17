@@ -1,53 +1,120 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { generarPdfVentas } from "../utils/pdfVentas";
+import { getOrders } from "../../order/waitress/hook/orders";
+import { getPayments } from "../../order/waitress/hook/payOrder";
+
+const ORDER_STATUS_PAID = 4;
+
+// Nequi y Daviplata se muestran como Transferencia
+const NORMALIZAR_METODO = {
+  nequi: "Transferencia",
+  daviplata: "Transferencia",
+};
+
+const normalizarMetodo = (nombre) => {
+  if (!nombre) return "No definido";
+  return NORMALIZAR_METODO[nombre.toLowerCase()] ?? nombre;
+};
 
 export default function VentasView() {
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
-
-  const ventas = [
-    {
-      id: 1,
-      fecha: "2026-02-19T12:30:00",
-      metodo: "Efectivo",
-      empleado: "Carlos",
-      productos: [
-        { nombre: "Ron Medellín", cantidad: 2, precio: 18000 },
-        { nombre: "Cerveza Poker", cantidad: 3, precio: 6000 },
-      ],
-    },
-    {
-      id: 2,
-      fecha: "2026-02-19T14:10:00",
-      metodo: "Nequi",
-      empleado: "Laura",
-      productos: [{ nombre: "Whisky Old Parr", cantidad: 1, precio: 75000 }],
-    },
-    {
-      id: 3,
-      fecha: "2026-02-18T22:45:00",
-      metodo: "Transferencia",
-      empleado: "Andrés",
-      productos: [
-        { nombre: "Tequila José Cuervo", cantidad: 2, precio: 85000 },
-      ],
-    },
-    {
-      id: 4,
-      fecha: "2026-02-17T20:15:00",
-      metodo: "Efectivo",
-      empleado: "Sofía",
-      productos: [{ nombre: "Red Bull", cantidad: 4, precio: 9000 }],
-    },
-  ];
+  const [ventas, setVentas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [metodosPago, setMetodosPago] = useState([]);
 
   const formatMoney = (num) => "$" + num.toLocaleString("es-CO");
 
-  const calcularTotal = (productos) =>
-    productos.reduce((acc, p) => acc + p.cantidad * p.precio, 0);
+  const calcularTotal = (productos, totalRespaldo = 0) => {
+    if (!productos || productos.length === 0) {
+      return Number(totalRespaldo || 0);
+    }
+
+    return productos.reduce((acc, p) => acc + p.cantidad * p.precio, 0);
+  };
+
+  const getNombreEmpleado = (order) => {
+    const nombreDesdeObjeto =
+      order?.user?.first_name || order?.id_users_data?.first_name;
+    const apellidoDesdeObjeto =
+      order?.user?.last_name || order?.id_users_data?.last_name;
+    const nombreCompleto = [nombreDesdeObjeto, apellidoDesdeObjeto]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    if (nombreCompleto) return nombreCompleto;
+    return order?.employee_name || order?.mesero || "Sin empleado";
+  };
+
+  const getMetodoPago = (order, metodosLista) => {
+    // Intenta nombre desde objeto anidado
+    const nombreAnidado =
+      order?.payment_method?.name ||
+      order?.id_payment?.name ||
+      order?.id_payment_data?.name ||
+      order?.metodo ||
+      null;
+
+    if (nombreAnidado) return normalizarMetodo(nombreAnidado);
+
+    // Fallback: buscar por ID en la lista de métodos de pago
+    const id = order?.id_payment;
+    if (id && metodosLista?.length > 0) {
+      const encontrado = metodosLista.find((m) => m.id === id);
+      if (encontrado) return normalizarMetodo(encontrado.name);
+    }
+
+    return "No definido";
+  };
+
+  const loadVentas = useCallback(async () => {
+    try {
+      const [orders, metodos] = await Promise.all([getOrders(), getPayments()]);
+
+      if (metodos?.length > 0) setMetodosPago(metodos);
+
+      const paidOrders = Array.isArray(orders)
+        ? orders.filter((order) => Number(order.id_order_status) === ORDER_STATUS_PAID)
+        : [];
+
+      const ventasMapeadas = paidOrders.map((order) => ({
+        id: order.id,
+        fecha:
+          order.date_order ||
+          order.updated_at ||
+          order.created_at ||
+          new Date().toISOString(),
+        metodo: getMetodoPago(order, metodos),
+        empleado: getNombreEmpleado(order),
+        total: Number(order.total || 0),
+        productos: (order.details || []).map((detail) => ({
+          nombre: detail?.drink?.name || "Producto desconocido",
+          cantidad: Number(detail?.amount || 0),
+          precio: Number(detail?.unit_price || 0),
+        })),
+      }));
+
+      setVentas(ventasMapeadas);
+    } catch (error) {
+      console.error("Error cargando ventas:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadVentas();
+
+    const interval = setInterval(() => {
+      loadVentas();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [loadVentas]);
 
   const ventasFiltradas = useMemo(() => {
     if (!fechaInicio || !fechaFin) return ventas;
@@ -60,20 +127,20 @@ export default function VentasView() {
 
       return fechaVenta >= inicio && fechaVenta <= fin;
     });
-  }, [fechaInicio, fechaFin]);
+  }, [fechaInicio, fechaFin, ventas]);
 
   const totalGeneral = ventasFiltradas.reduce(
-    (acc, v) => acc + calcularTotal(v.productos),
+    (acc, v) => acc + calcularTotal(v.productos, v.total),
     0,
   );
 
   const totalEfectivo = ventasFiltradas
-    .filter((v) => v.metodo === "Efectivo")
-    .reduce((acc, v) => acc + calcularTotal(v.productos), 0);
+    .filter((v) => v.metodo.toLowerCase().includes("efectivo"))
+    .reduce((acc, v) => acc + calcularTotal(v.productos, v.total), 0);
 
   const totalTransferencia = ventasFiltradas
-    .filter((v) => v.metodo !== "Efectivo")
-    .reduce((acc, v) => acc + calcularTotal(v.productos), 0);
+    .filter((v) => !v.metodo.toLowerCase().includes("efectivo"))
+    .reduce((acc, v) => acc + calcularTotal(v.productos, v.total), 0);
 
   const exportarExcel = () => {
     window.open("/api/export-excel");
@@ -164,6 +231,14 @@ export default function VentasView() {
       </div>
 
       {/* ================= VENTAS ================= */}
+      {loading && (
+        <div className="text-gray-400">Cargando ventas...</div>
+      )}
+
+      {!loading && ventasFiltradas.length === 0 && (
+        <div className="text-gray-400">No hay ventas para mostrar.</div>
+      )}
+
       {ventasFiltradas.map((venta) => (
         <motion.div
           key={venta.id}
@@ -187,17 +262,17 @@ export default function VentasView() {
 
               <span
                 className={`inline-block mt-2 px-3 py-1 text-xs rounded-full font-semibold ${
-                  venta.metodo === "Efectivo"
+                  venta.metodo.toLowerCase().includes("efectivo")
                     ? "bg-yellow-500/20 text-yellow-400"
                     : "bg-purple-500/20 text-purple-400"
                 }`}
               >
-                {venta.metodo === "Efectivo" ? "Efectivo" : "Transferencia"}
+                {venta.metodo}
               </span>
             </div>
 
             <h3 className="text-green-400 text-xl font-bold">
-              {formatMoney(calcularTotal(venta.productos))}
+              {formatMoney(calcularTotal(venta.productos, venta.total))}
             </h3>
           </div>
 

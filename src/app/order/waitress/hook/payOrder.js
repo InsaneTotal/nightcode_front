@@ -1,5 +1,9 @@
 import { authFetch } from "../../../../utils/authFetch";
 
+const ORDERS_BASE_URL = "http://127.0.0.1:8000/api/order/orders/";
+const getOrderPayUrl = (orderId) =>
+  ORDERS_BASE_URL + String(orderId) + "/pay/";
+
 export async function getPayments() {
   const response = await authFetch(
     "http://127.0.0.1:8000/api/order/payment-methods/"
@@ -14,7 +18,7 @@ export async function getPayments() {
 
 export async function payOrder(orderId, paymentMethodId) {
   const response = await authFetch(
-      `http://127.0.0.1:8000/api/order/orders/${orderId}/pay/`,
+      getOrderPayUrl(orderId),
     {
       method: "POST",
       headers: {

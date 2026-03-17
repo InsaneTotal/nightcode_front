@@ -295,7 +295,7 @@ export default function DashboardPage() {
                     <p className="text-gray-400 mb-4">Top Bebidas</p>
                     {bestSales.map((drink, index) => (
                       <div
-                        key={drink.drink_1}
+                        key={drink.drink_id ?? drink.drink_name ?? index}
                         className="flex justify-between text-sm mb-2"
                       >
                         <span className="text-purple-400">
