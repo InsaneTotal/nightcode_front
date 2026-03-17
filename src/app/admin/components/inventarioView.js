@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Search, Pencil } from "lucide-react";
 import { getInventory, updateInventory } from "../hooks/inventory";
 import EditInventarioModal from "./editInventarioModal"; // 👈 IMPORT
@@ -11,20 +11,22 @@ export default function InventarioView() {
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNewProduct, setIsNewProduct] = useState(false);
 
   // mensaje de creación/actualización y visibilidad de alerta
-  const [creationMessage, setCreationMessage] = useState("");
+  // const [creationMessage, setCreationMessage] = useState("");
   const [showAlert, setShowAlert] = useState(false);
 
+  const loadInventory = async () => {
+    try {
+      const inventoryData = await getInventory();
+      setProducts(inventoryData);
+    } catch (error) {
+      console.error("Error loading inventory:", error);
+    }
+  };
   useEffect(() => {
-    const loadInventory = async () => {
-      try {
-        const inventoryData = await getInventory();
-        setProducts(inventoryData);
-      } catch (error) {
-        console.error("Error loading inventory:", error);
-      }
-    };
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadInventory();
   }, []);
 
@@ -36,19 +38,42 @@ export default function InventarioView() {
     }
   }, [showAlert]);
 
+  // Filtrar productos según el término de búsqueda
+
+  const filteredProducts = products.filter((product) => {
+    const term = search.toLowerCase().trim();
+    if (!term) return true;
+
+    const name = (product.name || "").toLowerCase();
+    const description = (product.description || "").toLowerCase();
+    const category = (product.category_name || "").toLowerCase();
+
+    return (
+      name.includes(term) ||
+      description.includes(term) ||
+      category.includes(term)
+    );
+  });
+
   // 🔥 Producto seleccionado para editar
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const filteredProducts = useMemo(() => {
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.description.toLowerCase().includes(search.toLowerCase()),
-    );
-  }, [search, products]);
-
   const cardStyle =
     "bg-gradient-to-br from-zinc-900 via-zinc-950 to-black border border-yellow-600/20 rounded-2xl p-6";
+
+  const isLocalhostImage = (url) => {
+    if (!url) return false;
+    try {
+      const parsed = new URL(url);
+      return (
+        parsed.hostname === "localhost" ||
+        parsed.hostname === "127.0.0.1" ||
+        parsed.hostname === "::1"
+      );
+    } catch {
+      return false;
+    }
+  };
 
   return (
     <div className="w-full">
@@ -76,24 +101,30 @@ export default function InventarioView() {
           onClick={() => {
             setSelectedProduct(null);
             setIsModalOpen(true);
+            setIsNewProduct(true);
           }}
         />
 
-        {/* alerta temporal */}
+        {/* alerta temporal
         {showAlert && (
           <div className="fixed top-20 right-4 bg-green-600 text-white px-4 py-2 rounded shadow">
             {creationMessage}
           </div>
-        )
-        }
+        )} */}
       </div>
 
       <div className="space-y-8">
-        {products.map((product) => (
+        {filteredProducts.length === 0 && (
+          <p className="text-center text-gray-400">
+            No se encontraron productos.
+          </p>
+        )}
+        {filteredProducts.map((product) => (
           <div
             key={product.id}
             className={`${cardStyle} flex flex-col md:flex-row md:items-center md:justify-between gap-6`}
           >
+            {/* {console.log(product.url_img)} */}
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="w-40 h-40 min-w-40 bg-zinc-900 border border-yellow-600/20 rounded-xl flex items-center justify-center p-2">
                 <Image
@@ -102,6 +133,7 @@ export default function InventarioView() {
                   width={120}
                   height={120}
                   className="object-contain max-w-full max-h-full"
+                  unoptimized={isLocalhostImage(product.url_img)}
                 />
               </div>
 
@@ -138,6 +170,7 @@ export default function InventarioView() {
             <button
               onClick={() => {
                 setSelectedProduct(product);
+                setIsNewProduct(false);
                 setIsModalOpen(true);
               }}
               className="bg-zinc-900 border border-white/10 p-3 rounded-xl transition-colors hover:border-yellow-500"
@@ -157,10 +190,12 @@ export default function InventarioView() {
           setIsModalOpen(false);
         }}
         onSave={() => {
+          loadInventory();
           setIsModalOpen(false);
           setSelectedProduct(null);
         }}
         selectedProduct={selectedProduct}
+        isNewProduct={isNewProduct}
         // updateInventory={ShowUpdatedInventory}
       />
     </div>

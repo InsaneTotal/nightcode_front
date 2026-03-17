@@ -43,8 +43,8 @@ export async function updateInventory(id, updatedData) {
     throw new Error(errorText);
   }
 
-  const data = await response.json();
-  return data;
+  const res = { message: "Producto actualizado con exito" };
+  return res;
 }
 
 export async function createInventory(drinkData) {
@@ -64,8 +64,8 @@ export async function createInventory(drinkData) {
     throw new Error("Failed to create inventory item");
   }
 
-  const data = await response.json();
-  return data;
+  const res = { message: "Producto ingresado con exito" };
+  return res;
 }
 
 export async function getCategories() {

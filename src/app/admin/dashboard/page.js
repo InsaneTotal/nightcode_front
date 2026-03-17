@@ -1,15 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Activity,
-  Menu,
-  Settings,
-} from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Activity, Menu } from "lucide-react";
 
 import DashboardChart from "../components/dashboardChart";
 import InventarioView from "../components/inventarioView";
@@ -19,6 +12,7 @@ import ConfiguracionView from "../components/configuracionView";
 import ProtectedRoute from "../../../routes/protectedRoutes";
 import { getOrders, getSoldDrinks } from "../../order/waitress/hook/orders";
 import { getDrinks } from "../../order/waitress/hook/drinks";
+import { useApp } from "../../../context/AppContext";
 
 /* ================= COUNTER ================= */
 
@@ -36,6 +30,7 @@ function Counter({ value }) {
 /* ================= DASHBOARD ================= */
 
 export default function DashboardPage() {
+  const { usuario } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [activeView, setActiveView] = useState("dashboard");
   const [sales, setSales] = useState(0);
@@ -128,16 +123,6 @@ export default function DashboardPage() {
 
     getLowStockDrink();
   }, []);
-
-  // console.log(lowStockDrinks);
-  // const lowStockProducts = useMemo(
-  //   () => [
-  //     { name: "Cerveza Poker", stock: 2 },
-  //     { name: "Ron Medellín", stock: 1 },
-  //     { name: "Tequila José Cuervo", stock: 3 },
-  //   ],
-  //   [],
-  // );
 
   const currentProduct = lowStockDrinks[currentAlert % lowStockDrinks.length];
 
@@ -247,13 +232,15 @@ export default function DashboardPage() {
                 className="w-full flex items-center gap-3 bg-[#0a0f2a] p-3 rounded-xl border border-yellow-500/20 hover:border-yellow-500/40 transition"
               >
                 <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">
-                  N
+                  {(usuario?.name || "U").charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-yellow-400">
-                    Nicolás
+                    {usuario?.name || "Usuario"}
                   </p>
-                  <p className="text-xs text-gray-400">Administrador</p>
+                  <p className="text-xs text-gray-400">
+                    {usuario?.role?.name || "Sin rol"}
+                  </p>
                 </div>
               </button>
             </div>
