@@ -4,10 +4,50 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { authFetch } from "../../utils/authFetch";
+
+const DRINKS_URL = "http://localhost:8000/api/authinventory/drinks/";
+const CATEGORIES_URL = "http://localhost:8000/api/authinventory/categories/";
+
+const formatMoney = (value) => "$" + Math.round(Number(value || 0)).toLocaleString("es-CO");
+
+const normalizeCategoryKey = (drink) => {
+  const id = drink?.category ?? drink?.id_category ?? drink?.category_id;
+  if (id !== undefined && id !== null && id !== "") {
+    return String(id);
+  }
+  const name = drink?.category_name || drink?.category?.name || "Sin categoria";
+  return "name:" + String(name).toLowerCase();
+};
+
+const getCategoryNameForDrink = (drink, categoriesById) => {
+  const id = drink?.category ?? drink?.id_category ?? drink?.category_id;
+  if (id !== undefined && id !== null && categoriesById[String(id)]) {
+    return categoriesById[String(id)];
+  }
+  return drink?.category_name || drink?.category?.name || "Sin categoria";
+};
+
+const isLocalhostImage = (url) => {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.hostname === "localhost" ||
+      parsed.hostname === "127.0.0.1" ||
+      parsed.hostname === "::1"
+    );
+  } catch {
+    return false;
+  }
+};
 
 export default function MenuLicores() {
-  const [openSection, setOpenSection] = useState("cervezas");
+  const [openSection, setOpenSection] = useState(null);
   const [currentAd, setCurrentAd] = useState(0);
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const ads = ["/ads/ad6.png", "/ads/ad8.png", "/ads/ad7.png"];
 
@@ -22,38 +62,77 @@ export default function MenuLicores() {
     setOpenSection(openSection === section ? null : section);
   };
 
-  const sections = [
-    {
-      id: "cervezas",
-      title: "Cervezas",
-      image: "/cervezas/poker.png",
-      name: "POKER",
-      description:
-        "¡Destapa la amistad con Cerveza Poker! Lager colombiana con balance perfecto entre amargor y suavidad.",
-    },
-    {
-      id: "wiskey",
-      title: "Wiskey",
-      image: "/licores/jack.png",
-      name: "Jack Daniel's",
-      description: "Whiskey americano con notas ahumadas y sabor intenso.",
-    },
-    {
-      id: "aguardiente",
-      title: "Aguardiente",
-      image: "/licores/aguardiente.png",
-      name: "Aguardiente Antioqueño",
-      description:
-        "Tradicional aguardiente colombiano con sabor anisado suave.",
-    },
-    {
-      id: "ron",
-      title: "Ron",
-      image: "/licores/ron.png",
-      name: "Ron Medellín",
-      description: "Ron añejo con notas dulces ideal para compartir.",
-    },
-  ];
+  useEffect(() => {
+    const loadMenuFromApi = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const [drinksResponse, categoriesResponse] = await Promise.all([
+          authFetch(DRINKS_URL),
+          authFetch(CATEGORIES_URL),
+        ]);
+
+        if (!drinksResponse.ok) {
+          throw new Error("No se pudo cargar el inventario de bebidas");
+        }
+
+        if (!categoriesResponse.ok) {
+          throw new Error("No se pudieron cargar las categorias");
+        }
+
+        const drinks = await drinksResponse.json();
+        const categories = await categoriesResponse.json();
+
+        const categoriesById = Array.isArray(categories)
+          ? categories.reduce((acc, category) => {
+              acc[String(category.id)] = category.name || "Sin categoria";
+              return acc;
+            }, {})
+          : {};
+
+        const grouped = (Array.isArray(drinks) ? drinks : []).reduce((acc, drink) => {
+          const key = normalizeCategoryKey(drink);
+          const categoryName = getCategoryNameForDrink(drink, categoriesById);
+
+          if (!acc[key]) {
+            acc[key] = {
+              id: key,
+              title: categoryName,
+              products: [],
+            };
+          }
+
+          acc[key].products.push({
+            id: drink.id,
+            name: drink.name || "Producto sin nombre",
+            description: drink.description || "Sin descripcion",
+            price: Number(drink.price || 0),
+            amount: Number(drink.amount || 0),
+            image: drink.url_img || "/ads/ad6.png",
+          });
+
+          return acc;
+        }, {});
+
+        const mappedSections = Object.values(grouped)
+          .map((section) => ({
+            ...section,
+            products: section.products.sort((a, b) => a.name.localeCompare(b.name)),
+          }))
+          .sort((a, b) => a.title.localeCompare(b.title));
+
+        setSections(mappedSections);
+        setOpenSection(mappedSections[0]?.id ?? null);
+      } catch (err) {
+        setError(err.message || "Error cargando menu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMenuFromApi();
+  }, []);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-black via-[#0b0b0b] to-black text-white pb-32 px-4 pt-6">
@@ -101,6 +180,18 @@ export default function MenuLicores() {
 
         {/* 🔥 SECCIONES MEJORADAS */}
         <div className="space-y-4">
+          {loading && (
+            <div className="text-center text-gray-400">Cargando menu desde inventario...</div>
+          )}
+
+          {!loading && error && (
+            <div className="text-center text-red-400">{error}</div>
+          )}
+
+          {!loading && !error && sections.length === 0 && (
+            <div className="text-center text-gray-400">No hay bebidas registradas.</div>
+          )}
+
           {sections.map((section) => (
             <motion.div
               key={section.id}
@@ -133,32 +224,39 @@ export default function MenuLicores() {
                     transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
-                    <div className="border-t border-yellow-400/20 px-5 py-6 flex gap-5 items-center">
-                      {/* Imagen flotante */}
-                      <motion.div
-                        animate={{ y: [0, -8, 0] }}
-                        transition={{
-                          duration: 3,
-                          repeat: Infinity,
-                        }}
-                        className="relative w-24 h-36"
-                      >
-                        <Image
-                          src={section.image}
-                          alt={section.name}
-                          fill
-                          className="object-contain drop-shadow-[0_0_25px_rgba(255,193,7,0.6)]"
-                        />
-                      </motion.div>
+                    <div className="border-t border-yellow-400/20 px-5 py-6 space-y-4">
+                      {section.products.map((product) => (
+                        <div
+                          key={product.id}
+                          className="flex gap-4 items-center rounded-xl border border-yellow-400/10 bg-black/20 p-3"
+                        >
+                          <motion.div
+                            animate={{ y: [0, -4, 0] }}
+                            transition={{ duration: 2.8, repeat: Infinity }}
+                            className="relative w-20 h-28 shrink-0"
+                          >
+                            <Image
+                              src={product.image}
+                              alt={product.name}
+                              fill
+                              className="object-contain drop-shadow-[0_0_20px_rgba(255,193,7,0.45)]"
+                              unoptimized={isLocalhostImage(product.image)}
+                            />
+                          </motion.div>
 
-                      <div>
-                        <h4 className="text-yellow-400 font-bold mb-2">
-                          {section.name}
-                        </h4>
-                        <p className="text-sm text-gray-300 leading-relaxed">
-                          {section.description}
-                        </p>
-                      </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-yellow-400 font-bold mb-1 truncate">{product.name}</h4>
+                            <p className="text-sm text-gray-300 leading-relaxed mb-2 line-clamp-2">
+                              {product.description}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-3 text-sm">
+                              <span className="text-green-400 font-semibold">
+                                {formatMoney(product.price)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </motion.div>
                 )}

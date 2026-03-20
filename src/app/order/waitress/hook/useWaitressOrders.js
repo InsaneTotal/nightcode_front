@@ -3,10 +3,18 @@ import { getOrders } from "./orders";
 import { createOrder, addProductsToOrder, updateOrder } from "./createOrder";
 import { authFetch } from "../../../../utils/authFetch";
 
+const ORDER_STATUS_CANCELLED = 5;
+const ORDER_STATUS_PAID = 4;
+const ORDERS_BASE_URL = "http://127.0.0.1:8000/api/order/orders/";
+const getOrderUrl = (orderId) => ORDERS_BASE_URL + String(orderId) + "/";
+const getOrderPayUrl = (orderId) => getOrderUrl(orderId) + "pay/";
+
 const transformOrdersToTables = (tablesData, ordersData) => { // Fusiona mesas con sus órdenes para obtener estado y productos
   return tablesData.map((mesa) => {
     const order = ordersData.find(
-      (o) => o.id_mesa === mesa.id && o.id_order_status !== 4
+      (o) =>
+        o.id_mesa === mesa.id &&
+        ![ORDER_STATUS_CANCELLED, ORDER_STATUS_PAID].includes(o.id_order_status),
     );
     return { 
       ...mesa,
@@ -110,13 +118,13 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
       const orderId = mesa?.orderId;
 
       if (orderId) {
-        await authFetch(`http://127.0.0.1:8000/api/order/orders/${orderId}/`, {
+        await authFetch(getOrderUrl(orderId), {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            id_order_status: 4,
+            id_order_status: ORDER_STATUS_PAID,
           }),
         });
       }
@@ -142,6 +150,39 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
     }
   };
 
+  const cancelarPedidoMesa = async (tables, mesaId) => {
+    try {
+      const mesa = tables.find((m) => m.id === mesaId);
+      const orderId = mesa?.orderId;
+
+      if (!orderId) {
+        return;
+      }
+
+      await authFetch(getOrderUrl(orderId), {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id_order_status: ORDER_STATUS_CANCELLED,
+        }),
+      });
+
+      const [tablesData, ordersData] = await Promise.all([
+        getDrinkTables(),
+        getOrders(),
+      ]);
+
+      const tablesWithOrders = transformOrdersToTables(tablesData, ordersData);
+      setTables(tablesWithOrders);
+      setMesaActiva(null);
+    } catch (error) {
+      console.error("Error cancelando pedido:", error);
+      alert("Error al cancelar el pedido. Por favor intenta nuevamente.");
+    }
+  };
+
 
 
 const confirmarPago = async (tables, mesaActiva, metodoPago) => {
@@ -155,7 +196,7 @@ const confirmarPago = async (tables, mesaActiva, metodoPago) => {
     }
 
     const response = await authFetch(
-      `http://127.0.0.1:8000/api/order/orders/${mesa.orderId}/pay/`,
+      getOrderPayUrl(mesa.orderId),
       {
         method: "POST",
         headers: {
@@ -215,6 +256,7 @@ const confirmarPago = async (tables, mesaActiva, metodoPago) => {
     calcularTotal,
     agregarProductosAMesa,
     actualizarPedidoMesa,
+    cancelarPedidoMesa,
     liberarMesa,
     confirmarPago,
     ocuparMesa,

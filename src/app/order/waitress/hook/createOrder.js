@@ -1,7 +1,10 @@
 import { authFetch } from "../../../../utils/authFetch";
 
+const ORDERS_BASE_URL = "http://127.0.0.1:8000/api/order/orders/";
+const getOrderUrl = (orderId) => ORDERS_BASE_URL + String(orderId) + "/";
+
 export async function createOrder(mesaId, userId = 1) {
-  const response = await authFetch("http://127.0.0.1:8000/api/order/orders/", { //esto crea una nueva orden para una mesa específica
+  const response = await authFetch(ORDERS_BASE_URL, { //esto crea una nueva orden para una mesa específica
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -23,7 +26,7 @@ export async function createOrder(mesaId, userId = 1) {
 
 //esto hace que al momento de añadir un nuevo producto, va a traer lo de la base de datos y a crear nuevos productos, fusionando los nuevos con los existentes, y luego actualiza la orden completa con todos los productos (nuevos + existentes)
 export async function addProductsToOrder(orderId, products) {
-  const getResponse = await authFetch(`http://127.0.0.1:8000/api/order/orders/${orderId}/`); 
+  const getResponse = await authFetch(getOrderUrl(orderId)); 
   if (!getResponse.ok) {
     throw new Error("Error obteniendo orden");
   }
@@ -45,7 +48,7 @@ export async function addProductsToOrder(orderId, products) {
 
   const allDetails = [...existingDetails, ...newDetails];
 
-  const response = await authFetch(`http://127.0.0.1:8000/api/order/orders/${orderId}/`, {
+  const response = await authFetch(getOrderUrl(orderId), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -64,7 +67,7 @@ export async function addProductsToOrder(orderId, products) {
 
 export async function updateOrder(orderId, products) { // esto funciona para actualizar el pedido de una mesa, fusionando los nuevos productos con los existentes, pero si no hay productos, elimina la orden
   if (products.length === 0) {
-    const response = await authFetch(`http://127.0.0.1:8000/api/order/orders/${orderId}/`, {
+    const response = await authFetch(getOrderUrl(orderId), {
       method: "DELETE",
     });
 
@@ -80,7 +83,7 @@ export async function updateOrder(orderId, products) { // esto funciona para act
       unit_price: String(product.precio)
     }));
 
-    const response = await authFetch(`http://127.0.0.1:8000/api/order/orders/${orderId}/`, {
+    const response = await authFetch(getOrderUrl(orderId), {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
