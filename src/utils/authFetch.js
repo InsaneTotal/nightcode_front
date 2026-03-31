@@ -1,3 +1,5 @@
+import { buildApiUrl, fetchWithTimeout } from "./networkConfig";
+
 async function refreshAccessToken() {
   const refreshToken = localStorage.getItem("refreshToken");
   if (!refreshToken) {
@@ -6,16 +8,13 @@ async function refreshAccessToken() {
     throw new Error("No hay refresh token. Inicia sesión nuevamente.");
   }
 
-  const response = await fetch(
-    "http://localhost:8000/api/authusers/token/refresh/",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ refresh: refreshToken }),
+  const response = await fetchWithTimeout(buildApiUrl("/api/authusers/token/refresh/"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({ refresh: refreshToken }),
+  });
 
   if (!response.ok) {
     localStorage.removeItem("accessToken");
@@ -55,15 +54,21 @@ export async function authFetch(url, options = {}) {
     options.headers.Authorization = "Bearer " + token;
   }
 
-  let response = await fetch(url, options);
+  let response = await fetchWithTimeout(url, options);
 
   if (response.status === 401) {
+    const refreshToken = localStorage.getItem("refreshToken");
+    
+    // Si no hay refreshToken, es usuario invitado (QR sin sesión)
+    if (!refreshToken) {
+      return response; // Retorna 401 sin intentar refrescar
+    }
+
     try {
       token = await refreshAccessToken();
       options.headers.Authorization = "Bearer " + token;
-      response = await fetch(url, options);
+      response = await fetchWithTimeout(url, options);
     } catch (e) {
-      // Limpia los tokens si el refresh falla
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       throw new Error(

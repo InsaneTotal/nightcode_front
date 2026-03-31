@@ -1,9 +1,11 @@
 import { authFetch } from "../../../utils/authFetch";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export async function fetchRoles() {
   try {
     const response = await authFetch(
-      "http://localhost:8000/api/authusers/roles/",
+      `${API_URL}/api/authusers/roles/`,
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,

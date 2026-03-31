@@ -1,8 +1,10 @@
 import { authFetch } from "../../../../utils/authFetch";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export async function getOrders() {
   try {
-    const response = await authFetch("http://127.0.0.1:8000/api/order/orders/");
+    const response = await authFetch(`${API_URL}/api/order/orders/`);
 
     if (!response.ok) {
       throw new Error("Failed to fetch orders");
@@ -18,7 +20,7 @@ export async function getOrders() {
 export async function getSoldDrinks() {
   try {
     const response = await authFetch(
-      "http://127.0.0.1:8000/api/order/orders/top-drinks-today/",
+      `${API_URL}/api/order/orders/top-drinks-today/`,
     );
     if (!response.ok) {
       throw new Error("Failed to fetch sold drinks");

@@ -5,11 +5,39 @@ import { authFetch } from "../../../../utils/authFetch";
 
 const ORDER_STATUS_CANCELLED = 5;
 const ORDER_STATUS_PAID = 4;
-const ORDERS_BASE_URL = "http://127.0.0.1:8000/api/order/orders/";
+const TABLE_STATUS_FREE = 1;
+const TABLE_STATUS_OCCUPIED = 2;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const ORDERS_BASE_URL = `${API_URL}/api/order/orders/`;
 const getOrderUrl = (orderId) => ORDERS_BASE_URL + String(orderId) + "/";
 const getOrderPayUrl = (orderId) => getOrderUrl(orderId) + "pay/";
+const getTableUrl = (tableId) => `${API_URL}/api/order/drink-tables/${tableId}/`;
 
-const transformOrdersToTables = (tablesData, ordersData) => { // Fusiona mesas con sus órdenes para obtener estado y productos
+const syncTableStatus = async (tableId, statusId) => {
+  const payloads = [
+    { status: statusId },
+    { id_status: statusId },
+    { id_table_status: statusId },
+  ];
+
+  for (const payload of payloads) {
+    const response = await authFetch(getTableUrl(tableId), {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const transformOrdersToTables = (tablesData, ordersData) => {
   return tablesData.map((mesa) => {
     const order = ordersData.find(
       (o) =>
@@ -51,8 +79,6 @@ const transformOrdersToTables = (tablesData, ordersData) => { // Fusiona mesas c
   });
 };
 
-
-//esto calcula el total, agrega productos a una mesa, actualiza el pedido de una mesa, libera una mesa y ocupa una mesa
 export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) { 
   const calcularTotal = (items) =>
     items.reduce(
@@ -61,9 +87,9 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
       0,
     );
 
-  const agregarProductosAMesa = async (tables, mesaId, productos) => {  //esto agrega productos a una mesa, si la mesa no tiene orden, crea una nueva orden y luego agrega los productos
+  const agregarProductosAMesa = async (tables, mesaId, productos) => {
     try {
-      const mesa = tables.find(m => m.id === mesaId);
+      const mesa = tables.find((m) => m.id === mesaId);
       let orderId = mesa?.orderId;
 
       if (!orderId) {
@@ -72,10 +98,11 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
       }
 
       await addProductsToOrder(orderId, productos);
+      await syncTableStatus(mesaId, TABLE_STATUS_OCCUPIED);
 
       const [tablesData, ordersData] = await Promise.all([
         getDrinkTables(),
-        getOrders()
+        getOrders(),
       ]);
 
       const tablesWithOrders = transformOrdersToTables(tablesData, ordersData);
@@ -88,18 +115,24 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
 
 
 
-  const actualizarPedidoMesa = async (tables, mesaId, nuevosProductos) => { // esto actualiza el pedido de una mesa, fusionando los nuevos productos con los existentes
+  const actualizarPedidoMesa = async (tables, mesaId, nuevosProductos) => {
     try {
-      const mesa = tables.find(m => m.id === mesaId);
+      const mesa = tables.find((m) => m.id === mesaId);
       const orderId = mesa?.orderId;
 
       if (orderId) {
         await updateOrder(orderId, nuevosProductos);
       }
 
+      if (nuevosProductos.length > 0) {
+        await syncTableStatus(mesaId, TABLE_STATUS_OCCUPIED);
+      } else {
+        await syncTableStatus(mesaId, TABLE_STATUS_FREE);
+      }
+
       const [tablesData, ordersData] = await Promise.all([
         getDrinkTables(),
-        getOrders()
+        getOrders(),
       ]);
 
       const tablesWithOrders = transformOrdersToTables(tablesData, ordersData);
@@ -112,9 +145,9 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
 
 
 
-  const liberarMesa = async (tables, id) => { //esto libera una mesa, cambiando su estado a libre y actualizando el estado de la orden a pagada
+  const liberarMesa = async (tables, id) => {
     try {
-      const mesa = tables.find(m => m.id === id);
+      const mesa = tables.find((m) => m.id === id);
       const orderId = mesa?.orderId;
 
       if (orderId) {
@@ -128,6 +161,8 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
           }),
         });
       }
+
+      await syncTableStatus(id, TABLE_STATUS_FREE);
 
       setTables((prev) =>
         prev.map((m) =>
@@ -169,6 +204,8 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
         }),
       });
 
+      await syncTableStatus(mesaId, TABLE_STATUS_FREE);
+
       const [tablesData, ordersData] = await Promise.all([
         getDrinkTables(),
         getOrders(),
@@ -183,21 +220,16 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
     }
   };
 
+  const confirmarPago = async (tables, mesaActiva, metodoPago) => {
+    try {
+      const mesa = tables.find((m) => m.id === mesaActiva);
 
+      if (!mesa || !mesa.orderId) {
+        console.error("Mesa sin orden activa");
+        return;
+      }
 
-const confirmarPago = async (tables, mesaActiva, metodoPago) => {
-  try {
-
-    const mesa = tables.find((m) => m.id === mesaActiva);
-
-    if (!mesa || !mesa.orderId) {
-      console.error("Mesa sin orden activa");
-      return;
-    }
-
-    const response = await authFetch(
-      getOrderPayUrl(mesa.orderId),
-      {
+      const response = await authFetch(getOrderPayUrl(mesa.orderId), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -205,52 +237,70 @@ const confirmarPago = async (tables, mesaActiva, metodoPago) => {
         body: JSON.stringify({
           id_payment: metodoPago,
         }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al pagar");
       }
-    );
 
-    if (!response.ok) {
-      throw new Error("Error al pagar");
+      await syncTableStatus(mesaActiva, TABLE_STATUS_FREE);
+
+      setTables((prev) =>
+        prev.map((mesaItem) =>
+          mesaItem.id === mesaActiva
+            ? {
+                ...mesaItem,
+                status: TABLE_STATUS_FREE,
+                estado: "Libre",
+                color: "green",
+                items: [],
+                orderId: null,
+              }
+            : mesaItem,
+        ),
+      );
+
+      const [tablesData, ordersData] = await Promise.all([
+        getDrinkTables(),
+        getOrders(),
+      ]);
+
+      const tablesWithOrders = transformOrdersToTables(tablesData, ordersData);
+      setTables(tablesWithOrders);
+
+      setMesaActiva(null);
+      setOpenPago(false);
+    } catch (error) {
+      console.error("Error al pagar:", error);
     }
-
-    const [tablesData, ordersData] = await Promise.all([
-      getDrinkTables(),
-      getOrders(),
-    ]);
-
-    const tablesWithOrders = transformOrdersToTables(tablesData, ordersData);
-    setTables(tablesWithOrders);
-
-    setMesaActiva(null);
-    setOpenPago(false);
-
-  } catch (error) {
-    console.error("Error al pagar:", error);
-  }
-};
+  };
 
 
   const ocuparMesa = async (tables, id) => {
-  try {
-    setTables((prev) =>
-      prev.map((mesa) =>
-        mesa.id === id
-          ? {
-              ...mesa,
-              estado: "En consumo",
-              color: "yellow",
-              pedido: "Nuevo pedido",
-              orderId: null, 
-              items: [],
-            }
-          : mesa,
-      ),
-    );
+    try {
+      await syncTableStatus(id, TABLE_STATUS_OCCUPIED);
 
-    setMesaActiva(id);
-  } catch (error) {
-    console.error("Error ocupando mesa:", error);
-  }
-};
+      setTables((prev) =>
+        prev.map((mesa) =>
+          mesa.id === id
+            ? {
+                ...mesa,
+                status: TABLE_STATUS_OCCUPIED,
+                estado: "En consumo",
+                color: "yellow",
+                pedido: "Nuevo pedido",
+                orderId: null,
+                items: [],
+              }
+            : mesa,
+        ),
+      );
+
+      setMesaActiva(id);
+    } catch (error) {
+      console.error("Error ocupando mesa:", error);
+    }
+  };
 
   return {
     calcularTotal,

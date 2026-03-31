@@ -1,9 +1,11 @@
 import { authFetch } from "../../../utils/authFetch";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export async function createEmpleado(user) {
   try {
     const response = await authFetch(
-      "http://localhost:8000/api/authusers/users/",
+      `${API_URL}/api/authusers/users/`,
       {
         method: "POST",
         headers: {
@@ -29,7 +31,7 @@ export async function createEmpleado(user) {
 export async function updateEmpleado(id, user) {
   try {
     const response = await authFetch(
-      `http://localhost:8000/api/authusers/users/${id}/`,
+      `${API_URL}/api/authusers/users/${id}/`,
       {
         method: "PATCH",
         headers: {
@@ -56,7 +58,7 @@ export async function updateEmpleado(id, user) {
 export async function getEmpleados() {
   try {
     const response = await authFetch(
-      "http://localhost:8000/api/authusers/users/",
+      `${API_URL}/api/authusers/users/`,
     );
     if (!response.ok) {
       throw new Error("Error al obtener los empleados.");
@@ -71,7 +73,7 @@ export async function getEmpleados() {
 export async function deleteEmpleado(id, empleado) {
   try {
     const response = await authFetch(
-      `http://localhost:8000/api/authusers/users/${id}/deactivate/`,
+      `${API_URL}/api/authusers/users/${id}/deactivate/`,
       {
         method: "POST",
         headers: {
@@ -92,7 +94,7 @@ export async function deleteEmpleado(id, empleado) {
 export async function activateEmpleado(id, empleado) {
   try {
     const response = await authFetch(
-      `http://localhost:8000/api/authusers/users/${id}/activate/`,
+      `${API_URL}/api/authusers/users/${id}/activate/`,
       {
         method: "POST",
         headers: {
