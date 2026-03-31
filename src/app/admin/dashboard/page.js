@@ -9,6 +9,7 @@ import InventarioView from "../components/inventarioView";
 import VentasDetalle from "../components/ventasView";
 import EmpleadosView from "../components/empleadosView";
 import ConfiguracionView from "../components/configuracionView";
+import MesasQrView from "../components/mesasQrView";
 import ProtectedRoute from "../../../routes/protectedRoutes";
 import { getOrders, getSoldDrinks } from "../../order/waitress/hook/orders";
 import { getDrinks } from "../../order/waitress/hook/drinks";
@@ -183,6 +184,7 @@ export default function DashboardPage() {
     { key: "inventario", label: "Inventario" },
     { key: "ventas", label: "Ventas" },
     { key: "empleados", label: "Empleados" },
+    { key: "mesasQr", label: "Mesas QR" },
     { key: "configuracion", label: "Configuración" },
   ];
 
@@ -355,6 +357,7 @@ export default function DashboardPage() {
             {activeView === "inventario" && <InventarioView />}
             {activeView === "ventas" && <VentasDetalle />}
             {activeView === "empleados" && <EmpleadosView />}
+            {activeView === "mesasQr" && <MesasQrView />}
             {activeView === "configuracion" && <ConfiguracionView />}
           </AnimatePresence>
         </main>

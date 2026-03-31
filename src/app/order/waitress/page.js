@@ -9,7 +9,6 @@ import ModalEditPedidos from "./components/modalEditPedidos.js";
 import { showModalConfirmation } from "./components/modalConfimation";
 import ProtectedRoute from "../../../routes/protectedRoutes";
 
-//---------------------------------------------------//
 import { getDrinkTables } from "./hook/drinkTables";
 import { getOrders } from "./hook/orders";
 import { getDrinks } from "./hook/drinks";
@@ -25,7 +24,6 @@ export default function WaitressPage() {
   const [openEditar, setOpenEditar] = useState(false);
   const [mesaEditando, setMesaEditando] = useState(null);
   const [filtro, setFiltro] = useState("Todas");
-  //---------------------------------------------------//
   const [tables, setTables] = useState([]);
   const [drinks, setDrinks] = useState([]);
 
@@ -41,14 +39,21 @@ export default function WaitressPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const tablesData = await getDrinkTables();
-      const ordersData = await getOrders();
-      const drinksData = await getDrinks();
+      const [tablesData, ordersData, drinksData] = await Promise.all([
+        getDrinkTables().catch(() => []),
+        getOrders().catch(() => []),
+        getDrinks().catch(() => null),
+      ]);
 
-      setDrinks(drinksData);
+      if (Array.isArray(drinksData)) {
+        setDrinks(drinksData);
+      }
 
-      const tablesWithOrders = tablesData.map((mesa) => {
-        const order = ordersData.find(
+      const safeTables = Array.isArray(tablesData) ? tablesData : [];
+      const safeOrders = Array.isArray(ordersData) ? ordersData : [];
+
+      const tablesWithOrders = safeTables.map((mesa) => {
+        const order = safeOrders.find(
           (o) =>
             o.id_mesa === mesa.id &&
             ![ORDER_STATUS_CANCELLED, ORDER_STATUS_PAID].includes(o.id_order_status)
@@ -57,7 +62,7 @@ export default function WaitressPage() {
         return {
           ...mesa,
           orderId: order?.id,
-          items: order // esto funciona para transformar los detalles del pedido en el formato que espera la UI
+          items: order
             ? Object.values(
                 order.details.reduce((acc, detail) => {
                   const nombre = detail.drink.name;
@@ -103,9 +108,20 @@ export default function WaitressPage() {
 
     const refreshInterval = setInterval(() => {
       loadData();
-    }, 8000);
+    }, 3000);
 
-    return () => clearInterval(refreshInterval);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadData();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      clearInterval(refreshInterval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [loadData]);
 
   const estados = ["Todas", "Libre", "En consumo", "Pendiente"];
@@ -123,20 +139,6 @@ export default function WaitressPage() {
     }
   };
 
-  const getPingColor = (color) => {
-    switch (color) {
-      case "green":
-        return "bg-green-400";
-      case "red":
-        return "bg-red-400";
-      case "yellow":
-        return "bg-yellow-400";
-      default:
-        return "bg-gray-400";
-    }
-  };
-
-  // 🔥 WRAPPERS PARA FUNCIONES DEL HOOK
   const agregarProductosAMesa = async (mesaId, productos) => {
     await hookAgregarProductos(tables, mesaId, productos);
     await loadData();
@@ -178,17 +180,16 @@ export default function WaitressPage() {
     });
   };
 
-  const ocuparMesa = (id) => {
+  const ocuparMesa = async (id) => {
+    await hookOcuparMesa(tables, id);
     setMesaActiva(id);
     setOpenModal(true);
   };
 
-  // me ayuda a (restando lo que está en consumo en otras mesas)
   const calcularStockDisponible = () => {
     return drinks.map((drink) => {
       let totalEnConsumo = 0;
 
-      // Suma cantidades en consumo de todas las mesas menos la mesa actual
       tables.forEach((mesa) => {
         if (mesa.id !== mesaActiva && mesa.items.length > 0) {
           const item = mesa.items.find((i) => i.id === drink.id);
@@ -200,14 +201,13 @@ export default function WaitressPage() {
 
       return {
         ...drink,
-        amount: drink.amount - totalEnConsumo, // Stock disponible
+        amount: drink.amount - totalEnConsumo,
       };
     });
   };
 
   const drinksDisponibles = calcularStockDisponible();
 
-  // 🔥 EDITAR
   const abrirEditarPedido = (mesa) => {
     setMesaEditando(mesa);
     setOpenEditar(true);
@@ -224,6 +224,7 @@ export default function WaitressPage() {
           : m.color === "red",
         );
   const mesaActual = tables.find((m) => m.id === mesaActiva);
+  const mesaActualLibre = mesaActual?.status === 1 || mesaActual?.color === "green";
 
   return (
     <ProtectedRoute allowedRoles={["1", "2"]}>
@@ -389,15 +390,32 @@ export default function WaitressPage() {
             ) : (
               <>
                 <div>
-                  <p className="text-xl font-bold text-green-400">Disponible</p>
+                  <p
+                    className={`text-xl font-bold ${
+                      mesaActualLibre ? "text-green-400" : "text-red-400"
+                    }`}
+                  >
+                    {mesaActualLibre ? "Disponible" : "Pendiente"}
+                  </p>
                 </div>
 
-                <button
-                  onClick={() => ocuparMesa(mesaActual.id)}
-                  className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold w-full sm:w-auto"
-                >
-                  ➕ Ocupar Mesa
-                </button>
+                <div className="flex gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={() => ocuparMesa(mesaActual.id)}
+                    className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold w-full sm:w-auto"
+                  >
+                    ➕ Ocupar Mesa
+                  </button>
+
+                  {!mesaActualLibre && (
+                    <button
+                      onClick={() => abrirConfirmacionLiberar(mesaActual.id)}
+                      className="px-6 py-3 rounded-2xl bg-red-500 text-white font-bold w-full sm:w-auto"
+                    >
+                      🗑 Liberar Mesa
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </div>

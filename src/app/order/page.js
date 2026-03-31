@@ -5,9 +5,15 @@ import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authFetch } from "../../utils/authFetch";
+import {
+  BACKEND_CONNECTION_ERROR,
+  buildApiUrl,
+  fetchWithTimeout,
+  getApiBase,
+} from "../../utils/networkConfig";
 
-const DRINKS_URL = "http://localhost:8000/api/authinventory/drinks/";
-const CATEGORIES_URL = "http://localhost:8000/api/authinventory/categories/";
+const DRINKS_PATH = "/api/authinventory/drinks/";
+const CATEGORIES_PATH = "/api/authinventory/categories/";
 
 const formatMoney = (value) => "$" + Math.round(Number(value || 0)).toLocaleString("es-CO");
 
@@ -32,11 +38,7 @@ const isLocalhostImage = (url) => {
   if (!url) return false;
   try {
     const parsed = new URL(url);
-    return (
-      parsed.hostname === "localhost" ||
-      parsed.hostname === "127.0.0.1" ||
-      parsed.hostname === "::1"
-    );
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
     return false;
   }
@@ -48,6 +50,9 @@ export default function MenuLicores() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [hiddenImages, setHiddenImages] = useState({});
+  const [callingWaiter, setCallingWaiter] = useState(false);
+  const [waiterFeedback, setWaiterFeedback] = useState("");
 
   const ads = ["/ads/ad6.png", "/ads/ad8.png", "/ads/ad7.png"];
 
@@ -58,8 +63,68 @@ export default function MenuLicores() {
     return () => clearInterval(interval);
   }, [ads.length]);
 
+  // Guardar parámetros QR en sessionStorage cuando se abre la URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mesa = params.get("mesa");
+    const token = params.get("token");
+
+    if (mesa && token) {
+      sessionStorage.setItem("mesaId", mesa);
+      sessionStorage.setItem("mesa_token", token);
+    }
+  }, []);
+
   const toggleSection = (section) => {
     setOpenSection(openSection === section ? null : section);
+  };
+
+  const handleCallWaiter = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const mesaId = params.get("mesa") || sessionStorage.getItem("mesaId");
+    const token = params.get("token") || sessionStorage.getItem("mesa_token");
+
+    if (!mesaId || !token) {
+      setWaiterFeedback("QR inválido: falta token de mesa");
+      return;
+    }
+
+    setCallingWaiter(true);
+    setWaiterFeedback("");
+
+    try {
+      const apiBase = getApiBase();
+
+      // Intenta ruta principal
+      let response = await fetchWithTimeout(`${apiBase}/api/order/drink-tables/${mesaId}/call-waiter/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      // Si falla, prueba alias
+      if (!response.ok && response.status === 404) {
+        response = await fetchWithTimeout(`${apiBase}/api/order/tables/${mesaId}/call-waiter/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+      }
+
+      if (!response.ok) {
+        const error = await response.json();
+        setWaiterFeedback(`Error: ${error.detail || "Error al llamar mesero"}`);
+        return;
+      }
+
+      const data = await response.json();
+      setWaiterFeedback(`✓ ${data.detail}`);
+    } catch (error) {
+      setWaiterFeedback(error?.message || BACKEND_CONNECTION_ERROR);
+      console.error(error);
+    } finally {
+      setCallingWaiter(false);
+    }
   };
 
   useEffect(() => {
@@ -68,9 +133,22 @@ export default function MenuLicores() {
       setError("");
 
       try {
+        const drinksUrl = buildApiUrl(DRINKS_PATH);
+        const categoriesUrl = buildApiUrl(CATEGORIES_PATH);
+
+        // Intentar sin auth primero, si falla con 401, entonces con token
+        const publicFetch = async (url) => {
+          let res = await fetchWithTimeout(url);
+          if (res.status === 401 || res.status === 403) {
+            // Si el backend requiere auth, reintentar con token
+            res = await authFetch(url);
+          }
+          return res;
+        };
+
         const [drinksResponse, categoriesResponse] = await Promise.all([
-          authFetch(DRINKS_URL),
-          authFetch(CATEGORIES_URL),
+          publicFetch(drinksUrl),
+          publicFetch(categoriesUrl),
         ]);
 
         if (!drinksResponse.ok) {
@@ -91,7 +169,11 @@ export default function MenuLicores() {
             }, {})
           : {};
 
-        const grouped = (Array.isArray(drinks) ? drinks : []).reduce((acc, drink) => {
+        const visibleDrinks = (Array.isArray(drinks) ? drinks : []).filter(
+          (drink) => !/auth\s*test/i.test(String(drink?.name || "")),
+        );
+
+        const grouped = visibleDrinks.reduce((acc, drink) => {
           const key = normalizeCategoryKey(drink);
           const categoryName = getCategoryNameForDrink(drink, categoriesById);
 
@@ -109,7 +191,7 @@ export default function MenuLicores() {
             description: drink.description || "Sin descripcion",
             price: Number(drink.price || 0),
             amount: Number(drink.amount || 0),
-            image: drink.url_img || "/ads/ad6.png",
+            image: drink.url_img || null,
           });
 
           return acc;
@@ -125,7 +207,7 @@ export default function MenuLicores() {
         setSections(mappedSections);
         setOpenSection(mappedSections[0]?.id ?? null);
       } catch (err) {
-        setError(err.message || "Error cargando menu");
+        setError(err.message || BACKEND_CONNECTION_ERROR);
       } finally {
         setLoading(false);
       }
@@ -235,13 +317,18 @@ export default function MenuLicores() {
                             transition={{ duration: 2.8, repeat: Infinity }}
                             className="relative w-20 h-28 shrink-0"
                           >
-                            <Image
-                              src={product.image}
-                              alt={product.name}
-                              fill
-                              className="object-contain drop-shadow-[0_0_20px_rgba(255,193,7,0.45)]"
-                              unoptimized={isLocalhostImage(product.image)}
-                            />
+                            {product.image && !hiddenImages[product.id] && (
+                              <Image
+                                src={product.image}
+                                alt={product.name}
+                                fill
+                                className="object-contain drop-shadow-[0_0_20px_rgba(255,193,7,0.45)]"
+                                unoptimized={isLocalhostImage(product.image)}
+                                onError={() =>
+                                  setHiddenImages((prev) => ({ ...prev, [product.id]: true }))
+                                }
+                              />
+                            )}
                           </motion.div>
 
                           <div className="flex-1 min-w-0">
@@ -268,12 +355,18 @@ export default function MenuLicores() {
         {/* 🔥 BOTÓN PREMIUM */}
         <motion.button
           whileTap={{ scale: 0.95 }}
+          onClick={handleCallWaiter}
+          disabled={callingWaiter}
           className="w-full py-4 rounded-2xl 
                      bg-yellow-500 text-black font-bold tracking-wide
-                     shadow-[0_0_25px_rgba(255,193,7,0.5)]"
+                     shadow-[0_0_25px_rgba(255,193,7,0.5)] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          📞 Llamar mesero
+          {callingWaiter ? "Llamando..." : "📞 Llamar mesero"}
         </motion.button>
+
+        {waiterFeedback && (
+          <p className="text-center text-sm text-yellow-300">{waiterFeedback}</p>
+        )}
       </div>
 
       {/* 🔥 FOOTER MEJORADO */}

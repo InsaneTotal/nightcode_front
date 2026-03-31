@@ -1,8 +1,9 @@
 import { authFetch } from "../../../../utils/authFetch";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function getDrinks() {
   const response = await authFetch(
-    "http://127.0.0.1:8000/api/authinventory/drinks/",
+    `${API_URL}/api/authinventory/drinks/`,
   );
 
   if (!response.ok) {

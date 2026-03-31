@@ -7,6 +7,8 @@ import Image from "next/image";
 
 export default function Register() {
   const [formData, setFormData] = useState({});
+  const [docTypes, setDocTypes] = useState([]);
+  const [roles, setRoles] = useState([]);
 
   const handleChange = (e) => {
     setFormData({
