@@ -1,8 +1,10 @@
 import { authFetch } from "../../../utils/authFetch";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export async function getInventory() {
   const response = await authFetch(
-    "http://localhost:8000/api/authinventory/drinks/",
+    `${API_URL}/api/authinventory/drinks/`,
     {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -20,7 +22,7 @@ export async function getInventory() {
 
 export async function updateInventory(id, updatedData) {
   const response = await authFetch(
-    `http://localhost:8000/api/authinventory/drinks/${id}/`,
+    `${API_URL}/api/authinventory/drinks/${id}/`,
     {
       method: "PATCH",
       headers: {
@@ -49,7 +51,7 @@ export async function updateInventory(id, updatedData) {
 
 export async function createInventory(drinkData) {
   const response = await authFetch(
-    `http://localhost:8000/api/authinventory/drinks/`,
+    `${API_URL}/api/authinventory/drinks/`,
     {
       method: "POST",
       headers: {
@@ -70,7 +72,7 @@ export async function createInventory(drinkData) {
 
 export async function getCategories() {
   const response = await authFetch(
-    `http://localhost:8000/api/authinventory/categories/`,
+    `${API_URL}/api/authinventory/categories/`,
     {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("accessToken")}`,

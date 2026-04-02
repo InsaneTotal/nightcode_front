@@ -4,7 +4,8 @@ import { authFetch } from "../utils/authFetch";
 
 const AppContext = createContext();
 
-const CURRENT_USER_URL = "http://localhost:8000/api/authusers/me/";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const CURRENT_USER_URL = `${API_URL}/api/authusers/me/`;
 
 function normalizeUsuario(userData) {
   if (!userData) return null;

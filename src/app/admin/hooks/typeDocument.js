@@ -1,9 +1,11 @@
 import { authFetch } from "../../../utils/authFetch";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export async function fetchDocumentTypes() {
   try {
     const response = await authFetch(
-      "http://localhost:8000/api/authusers/typedocuments/",
+      `${API_URL}/api/authusers/typedocuments/`,
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,

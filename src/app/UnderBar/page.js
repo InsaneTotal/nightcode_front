@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import VistaPedidos from "./components/VistaPedidos";
 import HistorialPedidos from "./components/HistorialPedidos";
-import ProtectedRoute from "@/routes/protectedRoutes";
+import ProtectedRoute from "../../routes/protectedRoutes";
 
 export default function Barra() {
   const [vista, setVista] = useState("barra");
