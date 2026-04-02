@@ -18,9 +18,10 @@ export default function PedidoModal({
   if (!isOpen) return null;
 
   // filtra productos por busqueda y stock
-  const productosFiltrados = productosDB.filter((producto) =>
-    producto.name.toLowerCase().includes(search.toLowerCase()) &&
-    producto.amount > 0,
+  const productosFiltrados = productosDB.filter(
+    (producto) =>
+      producto.name.toLowerCase().includes(search.toLowerCase()) &&
+      producto.amount > 0,
   );
 
   // 🔥 FUNCIONES DE CANTIDAD
@@ -147,7 +148,7 @@ export default function PedidoModal({
           </div>
 
           {/* LISTA PRODUCTOS */}
-          <div className="space-y-4 max-h-[300px] overflow-y-auto">
+          <div className="space-y-4 max-h-75 overflow-y-auto scroll-table">
             {productosFiltrados.map((producto) => (
               <div
                 key={producto.id}

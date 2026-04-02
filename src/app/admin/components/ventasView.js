@@ -78,7 +78,9 @@ export default function VentasView() {
       if (metodos?.length > 0) setMetodosPago(metodos);
 
       const paidOrders = Array.isArray(orders)
-        ? orders.filter((order) => Number(order.id_order_status) === ORDER_STATUS_PAID)
+        ? orders.filter(
+            (order) => Number(order.id_order_status) === ORDER_STATUS_PAID,
+          )
         : [];
 
       const ventasMapeadas = paidOrders.map((order) => ({
@@ -165,21 +167,21 @@ export default function VentasView() {
 
       {/* ================= RESUMEN FINANCIERO ================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-gradient-to-br from-gray-900 to-black border border-yellow-500/30 rounded-2xl p-6 shadow-lg hover:shadow-yellow-500/20 transition">
+        <div className="bg-linear-to-br from-gray-900 to-black border border-yellow-500/30 rounded-2xl p-6 shadow-lg hover:shadow-yellow-500/20 transition">
           <p className="text-gray-400 text-sm">Total General</p>
           <h2 className="text-3xl font-bold text-green-400 mt-2">
             {formatMoney(totalGeneral)}
           </h2>
         </div>
 
-        <div className="bg-gradient-to-br from-gray-900 to-black border border-yellow-500/30 rounded-2xl p-6 shadow-lg hover:shadow-yellow-500/20 transition">
+        <div className="bg-linear-to-br from-gray-900 to-black border border-yellow-500/30 rounded-2xl p-6 shadow-lg hover:shadow-yellow-500/20 transition">
           <p className="text-gray-400 text-sm">Total Efectivo</p>
           <h2 className="text-3xl font-bold text-yellow-400 mt-2">
             {formatMoney(totalEfectivo)}
           </h2>
         </div>
 
-        <div className="bg-gradient-to-br from-gray-900 to-black border border-yellow-500/30 rounded-2xl p-6 shadow-lg hover:shadow-yellow-500/20 transition">
+        <div className="bg-linear-to-br from-gray-900 to-black border border-yellow-500/30 rounded-2xl p-6 shadow-lg hover:shadow-yellow-500/20 transition">
           <p className="text-gray-400 text-sm">Total Transferencias</p>
           <h2 className="text-3xl font-bold text-purple-400 mt-2">
             {formatMoney(totalTransferencia)}
@@ -231,9 +233,7 @@ export default function VentasView() {
       </div>
 
       {/* ================= VENTAS ================= */}
-      {loading && (
-        <div className="text-gray-400">Cargando ventas...</div>
-      )}
+      {loading && <div className="text-gray-400">Cargando ventas...</div>}
 
       {!loading && ventasFiltradas.length === 0 && (
         <div className="text-gray-400">No hay ventas para mostrar.</div>
@@ -245,7 +245,7 @@ export default function VentasView() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.01 }}
-          className="bg-gradient-to-br from-black to-gray-900 border border-yellow-500/30 rounded-2xl p-6 mb-8 shadow-md hover:shadow-yellow-500/20 transition-all"
+          className="bg-linear-to-br from-black to-gray-900 border border-yellow-500/30 rounded-2xl p-6 mb-8 shadow-md hover:shadow-yellow-500/20 transition-all"
         >
           <div className="flex justify-between items-start mb-4">
             <div>

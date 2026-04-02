@@ -85,3 +85,24 @@ export async function getCategories() {
   const data = await response.json();
   return data;
 }
+
+export async function createCategory(categoryData) {
+  const response = await authFetch(
+    `http://localhost:8000/api/authinventory/categories/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      },
+      body: JSON.stringify(categoryData),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to create category");
+  }
+
+  const res = { message: "Categoría creada con éxito" };
+  return res;
+}
