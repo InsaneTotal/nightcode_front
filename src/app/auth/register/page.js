@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchDocumentTypes } from "../../admin/hooks/typeDocument";
+import { fetchRoles } from "../../admin/hooks/roles";
 import Image from "next/image";
 
 export default function Register() {
   const [formData, setFormData] = useState({});
+  const [docTypes, setDocTypes] = useState([]);
+  const [roles, setRoles] = useState([]);
 
   const handleChange = (e) => {
     setFormData({
@@ -12,6 +16,22 @@ export default function Register() {
       [e.target.name]: e.target.value,
     });
   };
+
+  useEffect(() => {
+    const loadTypes = async () => {
+      const types = await fetchDocumentTypes();
+      setDocTypes(types);
+    };
+    loadTypes();
+  }, []);
+
+  useEffect(() => {
+    const loadRoles = async () => {
+      const roles = await fetchRoles();
+      setRoles(roles);
+    };
+    loadRoles();
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-[url('/img_fondo_bar.jpg')] bg-cover bg-center flex flex-col items-center pt-2 px-4 pb-6">
@@ -36,7 +56,7 @@ export default function Register() {
         </div>
         {/* FORM CARD */}
         <div
-          className="bg-gradient-to-br from-[#4b2c4f] to-[#2e1b30] 
+          className="bg-linear-to-br from-[#4b2c4f] to-[#2e1b30] 
                       w-full max-w-lg rounded-[40px] 
                       shadow-[0_0_40px_rgba(255,204,0,0.4)] 
                       p-8 text-white mt-6"
@@ -96,8 +116,11 @@ export default function Register() {
                 className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
               >
                 <option value="">Seleccione el tipo de documento</option>
-                <option value="1">Cédula</option>
-                <option value="2">Tarjeta de Identidad</option>
+                {docTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -164,9 +187,11 @@ export default function Register() {
                 className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
               >
                 <option value="">Seleccione el rol</option>
-                <option value="1">Administrador</option>
-                <option value="2">Mesero</option>
-                <option value="3">Empleado</option>
+                {roles.map((rol) => (
+                  <option key={rol.id} value={rol.id}>
+                    {rol.name}
+                  </option>
+                ))}
               </select>
             </div>
 

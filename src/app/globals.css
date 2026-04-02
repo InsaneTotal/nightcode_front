@@ -27,7 +27,29 @@ body {
 
 .bg_form {
   background-color: #0b0b0f;
-    background-image:
-      radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.03) 1px,
+    transparent 1px
+  );
+  background-size: 40px 40px;
+}
+
+.scroll-table::-webkit-scrollbar {
+  width: 8px;
+  background: #1a1a2e;
+}
+
+.scroll-table::-webkit-scrollbar-thumb {
+  background: #ffd600;
+  border-radius: 8px;
+}
+
+.scroll-table::-webkit-scrollbar-track {
+  background: #2e1b30;
+}
+
+/* Firefox */
+.scroll-table {
+  scrollbar-width: thin;
+  scrollbar-color: #ffd600 #2e1b30;
 }
