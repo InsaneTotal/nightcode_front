@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { memo, useCallback, useState, useEffect } from "react";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,11 +11,17 @@ import {
   fetchWithTimeout,
   getApiBase,
 } from "../../utils/networkConfig";
+import {
+  matchesRealtimeTopics,
+  subscribeRealtimeUpdates,
+} from "../../utils/realtime";
 
 const DRINKS_PATH = "/api/authinventory/drinks/";
 const CATEGORIES_PATH = "/api/authinventory/categories/";
+const ADS = ["/ads/ad6.png", "/ads/ad8.png", "/ads/ad7.png"];
 
-const formatMoney = (value) => "$" + Math.round(Number(value || 0)).toLocaleString("es-CO");
+const formatMoney = (value) =>
+  "$" + Math.round(Number(value || 0)).toLocaleString("es-CO");
 
 const normalizeCategoryKey = (drink) => {
   const id = drink?.category ?? drink?.id_category ?? drink?.category_id;
@@ -44,6 +50,47 @@ const isLocalhostImage = (url) => {
   }
 };
 
+const ProductCard = memo(function ProductCard({
+  product,
+  hidden,
+  onImageError,
+}) {
+  return (
+    <div className="flex gap-4 items-center rounded-xl border border-yellow-400/10 bg-black/20 p-3">
+      <motion.div
+        animate={{ y: [0, -4, 0] }}
+        transition={{ duration: 2.8, repeat: Infinity }}
+        className="relative w-20 h-28 shrink-0"
+      >
+        {product.image && !hidden && (
+          <Image
+            src={product.image}
+            alt={product.name}
+            fill
+            className="object-contain drop-shadow-[0_0_20px_rgba(255,193,7,0.45)]"
+            unoptimized={isLocalhostImage(product.image)}
+            onError={() => onImageError(product.id)}
+          />
+        )}
+      </motion.div>
+
+      <div className="flex-1 min-w-0">
+        <h4 className="text-yellow-400 font-bold mb-1 truncate">
+          {product.name}
+        </h4>
+        <p className="text-sm text-gray-300 leading-relaxed mb-2 line-clamp-2">
+          {product.description}
+        </p>
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <span className="text-green-400 font-semibold">
+            {formatMoney(product.price)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export default function MenuLicores() {
   const [openSection, setOpenSection] = useState(null);
   const [currentAd, setCurrentAd] = useState(0);
@@ -54,14 +101,16 @@ export default function MenuLicores() {
   const [callingWaiter, setCallingWaiter] = useState(false);
   const [waiterFeedback, setWaiterFeedback] = useState("");
 
-  const ads = ["/ads/ad6.png", "/ads/ad8.png", "/ads/ad7.png"];
-
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentAd((prev) => (prev + 1) % ads.length);
+      setCurrentAd((prev) => (prev + 1) % ADS.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [ads.length]);
+  }, []);
+
+  const handleProductImageError = (productId) => {
+    setHiddenImages((prev) => ({ ...prev, [productId]: true }));
+  };
 
   // Guardar parámetros QR en sessionStorage cuando se abre la URL
   useEffect(() => {
@@ -96,19 +145,25 @@ export default function MenuLicores() {
       const apiBase = getApiBase();
 
       // Intenta ruta principal
-      let response = await fetchWithTimeout(`${apiBase}/api/order/drink-tables/${mesaId}/call-waiter/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-
-      // Si falla, prueba alias
-      if (!response.ok && response.status === 404) {
-        response = await fetchWithTimeout(`${apiBase}/api/order/tables/${mesaId}/call-waiter/`, {
+      let response = await fetchWithTimeout(
+        `${apiBase}/api/order/drink-tables/${mesaId}/call-waiter/`,
+        {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
-        });
+        },
+      );
+
+      // Si falla, prueba alias
+      if (!response.ok && response.status === 404) {
+        response = await fetchWithTimeout(
+          `${apiBase}/api/order/tables/${mesaId}/call-waiter/`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          },
+        );
       }
 
       if (!response.ok) {
@@ -127,94 +182,114 @@ export default function MenuLicores() {
     }
   };
 
-  useEffect(() => {
-    const loadMenuFromApi = async () => {
-      setLoading(true);
-      setError("");
+  const loadMenuFromApi = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-      try {
-        const drinksUrl = buildApiUrl(DRINKS_PATH);
-        const categoriesUrl = buildApiUrl(CATEGORIES_PATH);
+    try {
+      const drinksUrl = buildApiUrl(DRINKS_PATH);
+      const categoriesUrl = buildApiUrl(CATEGORIES_PATH);
 
-        // Intentar sin auth primero, si falla con 401, entonces con token
-        const publicFetch = async (url) => {
-          let res = await fetchWithTimeout(url);
-          if (res.status === 401 || res.status === 403) {
-            // Si el backend requiere auth, reintentar con token
-            res = await authFetch(url);
-          }
-          return res;
-        };
-
-        const [drinksResponse, categoriesResponse] = await Promise.all([
-          publicFetch(drinksUrl),
-          publicFetch(categoriesUrl),
-        ]);
-
-        if (!drinksResponse.ok) {
-          throw new Error("No se pudo cargar el inventario de bebidas");
+      // Intentar sin auth primero, si falla con 401, entonces con token
+      const publicFetch = async (url) => {
+        let res = await fetchWithTimeout(url);
+        if (res.status === 401 || res.status === 403) {
+          // Si el backend requiere auth, reintentar con token
+          res = await authFetch(url);
         }
+        return res;
+      };
 
-        if (!categoriesResponse.ok) {
-          throw new Error("No se pudieron cargar las categorias");
-        }
+      const [drinksResponse, categoriesResponse] = await Promise.all([
+        publicFetch(drinksUrl),
+        publicFetch(categoriesUrl),
+      ]);
 
-        const drinks = await drinksResponse.json();
-        const categories = await categoriesResponse.json();
-
-        const categoriesById = Array.isArray(categories)
-          ? categories.reduce((acc, category) => {
-              acc[String(category.id)] = category.name || "Sin categoria";
-              return acc;
-            }, {})
-          : {};
-
-        const visibleDrinks = (Array.isArray(drinks) ? drinks : []).filter(
-          (drink) => !/auth\s*test/i.test(String(drink?.name || "")),
-        );
-
-        const grouped = visibleDrinks.reduce((acc, drink) => {
-          const key = normalizeCategoryKey(drink);
-          const categoryName = getCategoryNameForDrink(drink, categoriesById);
-
-          if (!acc[key]) {
-            acc[key] = {
-              id: key,
-              title: categoryName,
-              products: [],
-            };
-          }
-
-          acc[key].products.push({
-            id: drink.id,
-            name: drink.name || "Producto sin nombre",
-            description: drink.description || "Sin descripcion",
-            price: Number(drink.price || 0),
-            amount: Number(drink.amount || 0),
-            image: drink.url_img || null,
-          });
-
-          return acc;
-        }, {});
-
-        const mappedSections = Object.values(grouped)
-          .map((section) => ({
-            ...section,
-            products: section.products.sort((a, b) => a.name.localeCompare(b.name)),
-          }))
-          .sort((a, b) => a.title.localeCompare(b.title));
-
-        setSections(mappedSections);
-        setOpenSection(mappedSections[0]?.id ?? null);
-      } catch (err) {
-        setError(err.message || BACKEND_CONNECTION_ERROR);
-      } finally {
-        setLoading(false);
+      if (!drinksResponse.ok) {
+        throw new Error("No se pudo cargar el inventario de bebidas");
       }
-    };
 
-    loadMenuFromApi();
+      if (!categoriesResponse.ok) {
+        throw new Error("No se pudieron cargar las categorias");
+      }
+
+      const drinks = await drinksResponse.json();
+      const categories = await categoriesResponse.json();
+
+      const categoriesById = Array.isArray(categories)
+        ? categories.reduce((acc, category) => {
+            acc[String(category.id)] = category.name || "Sin categoria";
+            return acc;
+          }, {})
+        : {};
+
+      const visibleDrinks = (Array.isArray(drinks) ? drinks : []).filter(
+        (drink) => !/auth\s*test/i.test(String(drink?.name || "")),
+      );
+
+      const grouped = visibleDrinks.reduce((acc, drink) => {
+        const key = normalizeCategoryKey(drink);
+        const categoryName = getCategoryNameForDrink(drink, categoriesById);
+
+        if (!acc[key]) {
+          acc[key] = {
+            id: key,
+            title: categoryName,
+            products: [],
+          };
+        }
+
+        acc[key].products.push({
+          id: drink.id,
+          name: drink.name || "Producto sin nombre",
+          description: drink.description || "Sin descripcion",
+          price: Number(drink.price || 0),
+          amount: Number(drink.amount || 0),
+          image: drink.url_img || null,
+        });
+
+        return acc;
+      }, {});
+
+      const mappedSections = Object.values(grouped)
+        .map((section) => ({
+          ...section,
+          products: section.products.sort((a, b) =>
+            a.name.localeCompare(b.name),
+          ),
+        }))
+        .sort((a, b) => a.title.localeCompare(b.title));
+
+      setSections(mappedSections);
+      setOpenSection(mappedSections[0]?.id ?? null);
+    } catch (err) {
+      setError(err.message || BACKEND_CONNECTION_ERROR);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadMenuFromApi();
+  }, [loadMenuFromApi]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeRealtimeUpdates((event) => {
+      if (
+        matchesRealtimeTopics(event, [
+          "inventory",
+          "drinks",
+          "categories",
+          "menu",
+          "products",
+        ])
+      ) {
+        loadMenuFromApi();
+      }
+    });
+
+    return () => unsubscribe();
+  }, [loadMenuFromApi]);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-black via-[#0b0b0b] to-black text-white pb-32 px-4 pt-6">
@@ -231,7 +306,7 @@ export default function MenuLicores() {
               className="absolute inset-0"
             >
               <Image
-                src={ads[currentAd]}
+                src={ADS[currentAd]}
                 alt="Publicidad"
                 fill
                 className=""
@@ -244,7 +319,7 @@ export default function MenuLicores() {
 
           {/* Indicadores */}
           <div className="absolute bottom-4 w-full flex justify-center gap-2">
-            {ads.map((_, index) => (
+            {ADS.map((_, index) => (
               <div
                 key={index}
                 className={`h-2 w-6 rounded-full transition-all ${
@@ -263,7 +338,9 @@ export default function MenuLicores() {
         {/* 🔥 SECCIONES MEJORADAS */}
         <div className="space-y-4">
           {loading && (
-            <div className="text-center text-gray-400">Cargando menu desde inventario...</div>
+            <div className="text-center text-gray-400">
+              Cargando menu desde inventario...
+            </div>
           )}
 
           {!loading && error && (
@@ -271,7 +348,9 @@ export default function MenuLicores() {
           )}
 
           {!loading && !error && sections.length === 0 && (
-            <div className="text-center text-gray-400">No hay bebidas registradas.</div>
+            <div className="text-center text-gray-400">
+              No hay bebidas registradas.
+            </div>
           )}
 
           {sections.map((section) => (
@@ -308,41 +387,12 @@ export default function MenuLicores() {
                   >
                     <div className="border-t border-yellow-400/20 px-5 py-6 space-y-4">
                       {section.products.map((product) => (
-                        <div
+                        <ProductCard
                           key={product.id}
-                          className="flex gap-4 items-center rounded-xl border border-yellow-400/10 bg-black/20 p-3"
-                        >
-                          <motion.div
-                            animate={{ y: [0, -4, 0] }}
-                            transition={{ duration: 2.8, repeat: Infinity }}
-                            className="relative w-20 h-28 shrink-0"
-                          >
-                            {product.image && !hiddenImages[product.id] && (
-                              <Image
-                                src={product.image}
-                                alt={product.name}
-                                fill
-                                className="object-contain drop-shadow-[0_0_20px_rgba(255,193,7,0.45)]"
-                                unoptimized={isLocalhostImage(product.image)}
-                                onError={() =>
-                                  setHiddenImages((prev) => ({ ...prev, [product.id]: true }))
-                                }
-                              />
-                            )}
-                          </motion.div>
-
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-yellow-400 font-bold mb-1 truncate">{product.name}</h4>
-                            <p className="text-sm text-gray-300 leading-relaxed mb-2 line-clamp-2">
-                              {product.description}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-3 text-sm">
-                              <span className="text-green-400 font-semibold">
-                                {formatMoney(product.price)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                          product={product}
+                          hidden={Boolean(hiddenImages[product.id])}
+                          onImageError={handleProductImageError}
+                        />
                       ))}
                     </div>
                   </motion.div>
@@ -365,7 +415,9 @@ export default function MenuLicores() {
         </motion.button>
 
         {waiterFeedback && (
-          <p className="text-center text-sm text-yellow-300">{waiterFeedback}</p>
+          <p className="text-center text-sm text-yellow-300">
+            {waiterFeedback}
+          </p>
         )}
       </div>
 

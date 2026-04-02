@@ -31,6 +31,12 @@ export default function EditInventarioModal({
   // Si en el futuro hay más categorías, aquí se pueden cargar
   const [categories, setCategories] = useState([]);
 
+  const toNumber = (value, fallback = 0) => {
+    if (value === null || value === undefined || value === "") return fallback;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     const signal = controller.signal;
@@ -68,9 +74,9 @@ export default function EditInventarioModal({
       setFormData({
         name: selectedProduct.name || "",
         url_img: selectedProduct.url_img || "",
-        price: selectedProduct.price ?? 0,
+        price: toNumber(selectedProduct.price, 0),
         description: selectedProduct.description || "",
-        amount: selectedProduct.amount ?? 0,
+        amount: toNumber(selectedProduct.amount, 0),
         category: categoryId || 0,
       });
       setImageChanged(false);

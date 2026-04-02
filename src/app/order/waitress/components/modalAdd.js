@@ -18,9 +18,10 @@ export default function PedidoModal({
   if (!isOpen) return null;
 
   // filtra productos por busqueda y stock
-  const productosFiltrados = productosDB.filter((producto) =>
-    producto.name.toLowerCase().includes(search.toLowerCase()) &&
-    producto.amount > 0,
+  const productosFiltrados = productosDB.filter(
+    (producto) =>
+      producto.name.toLowerCase().includes(search.toLowerCase()) &&
+      producto.amount > 0,
   );
 
   // 🔥 FUNCIONES DE CANTIDAD
@@ -121,7 +122,7 @@ export default function PedidoModal({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.8, opacity: 0 }}
           transition={{ duration: 0.3 }}
-          className="bg-black border border-yellow-500 w-[520px] rounded-3xl p-6 text-white shadow-2xl"
+          className="bg-black border border-yellow-500 w-130 rounded-3xl p-6 text-white shadow-2xl"
         >
           {/* HEADER */}
           <div className="flex justify-between items-center mb-4">
@@ -147,7 +148,7 @@ export default function PedidoModal({
           </div>
 
           {/* LISTA PRODUCTOS */}
-          <div className="space-y-4 max-h-[300px] overflow-y-auto">
+          <div className="space-y-4 max-h-75 overflow-y-auto scroll-table">
             {productosFiltrados.map((producto) => (
               <div
                 key={producto.id}

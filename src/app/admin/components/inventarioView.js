@@ -1,34 +1,70 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, Pencil } from "lucide-react";
-import { getInventory, updateInventory } from "../hooks/inventory";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Search, Pencil, ChevronDown } from "lucide-react";
+import { getInventory, getCategories } from "../hooks/inventory";
 import EditInventarioModal from "./editInventarioModal"; // 👈 IMPORT
 import Image from "next/image";
 import AddButton from "../../components/AddButton";
+import {
+  matchesRealtimeTopics,
+  subscribeRealtimeUpdates,
+} from "../../../utils/realtime";
 
 export default function InventarioView() {
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNewProduct, setIsNewProduct] = useState(false);
-
-  // mensaje de creación/actualización y visibilidad de alerta
-  // const [creationMessage, setCreationMessage] = useState("");
   const [showAlert, setShowAlert] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [openCategory, setOpenCategory] = useState(new Set());
 
-  const loadInventory = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const inventoryData = await getInventory();
-      setProducts(inventoryData);
+      const [inventoryData, categoriesData] = await Promise.all([
+        getInventory(),
+        getCategories(),
+      ]);
+
+      const inventoryList = Array.isArray(inventoryData)
+        ? inventoryData
+        : inventoryData?.results || [];
+
+      const categoriesList = Array.isArray(categoriesData)
+        ? categoriesData
+        : categoriesData?.results || [];
+
+      setProducts(inventoryList);
+      setCategories(categoriesList);
     } catch (error) {
-      console.error("Error loading inventory:", error);
+      console.error("Error loading data:", error);
     }
-  };
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadInventory();
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeRealtimeUpdates((event) => {
+      if (
+        matchesRealtimeTopics(event, [
+          "inventory",
+          "drinks",
+          "category",
+          "categories",
+          "product",
+          "products",
+        ])
+      ) {
+        loadData();
+      }
+    });
+
+    return () => unsubscribe();
+  }, [loadData]);
 
   // oculta la alerta automáticamente después de unos segundos
   useEffect(() => {
@@ -39,24 +75,75 @@ export default function InventarioView() {
   }, [showAlert]);
 
   // Filtrar productos según el término de búsqueda
-
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = useMemo(() => {
     const term = search.toLowerCase().trim();
-    if (!term) return true;
+    return products.filter((product) => {
+      if (!term) return true;
 
-    const name = (product.name || "").toLowerCase();
-    const description = (product.description || "").toLowerCase();
-    const category = (product.category_name || "").toLowerCase();
+      const name = (product.name || "").toLowerCase();
+      const description = (product.description || "").toLowerCase();
+      const category = (product.category_name || "").toLowerCase();
 
-    return (
-      name.includes(term) ||
-      description.includes(term) ||
-      category.includes(term)
-    );
-  });
+      return (
+        name.includes(term) ||
+        description.includes(term) ||
+        category.includes(term)
+      );
+    });
+  }, [products, search]);
+
+  const productsByCategory = useMemo(() => {
+    const map = new Map();
+    for (const product of filteredProducts) {
+      const categoryId =
+        product.category_id ?? product.category ?? "sin-categoria";
+      if (!map.has(categoryId)) {
+        map.set(categoryId, []);
+      }
+      map.get(categoryId).push(product);
+    }
+    return map;
+  }, [filteredProducts]);
+
+  const categoryGroups = useMemo(() => {
+    const groups = categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      items: productsByCategory.get(category.id) || [],
+    }));
+
+    for (const [key, items] of productsByCategory.entries()) {
+      const alreadyExists = groups.some((group) => group.id === key);
+      if (!alreadyExists) {
+        const fallbackName =
+          key === "sin-categoria"
+            ? "Sin categoría"
+            : items[0]?.category_name || `Categoría ${key}`;
+
+        groups.push({
+          id: key,
+          name: fallbackName,
+          items,
+        });
+      }
+    }
+
+    return groups.filter((group) => group.items.length > 0);
+  }, [categories, productsByCategory]);
+
+  const toggleCategory = (categoryId) => {
+    setOpenCategory((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
 
   // 🔥 Producto seleccionado para editar
-  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const cardStyle =
     "bg-gradient-to-br from-zinc-900 via-zinc-950 to-black border border-yellow-600/20 rounded-2xl p-6";
@@ -104,81 +191,121 @@ export default function InventarioView() {
             setIsNewProduct(true);
           }}
         />
-
-        {/* alerta temporal
-        {showAlert && (
-          <div className="fixed top-20 right-4 bg-green-600 text-white px-4 py-2 rounded shadow">
-            {creationMessage}
-          </div>
-        )} */}
       </div>
-
       <div className="space-y-8">
-        {filteredProducts.length === 0 && (
+        {categoryGroups.length === 0 && (
           <p className="text-center text-gray-400">
             No se encontraron productos.
           </p>
         )}
-        {filteredProducts.map((product) => (
-          <div
-            key={product.id}
-            className={`${cardStyle} flex flex-col md:flex-row md:items-center md:justify-between gap-6`}
-          >
-            {/* {console.log(product.url_img)} */}
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-40 h-40 min-w-40 bg-zinc-900 border border-yellow-600/20 rounded-xl flex items-center justify-center p-2">
-                <Image
-                  src={product.url_img}
-                  alt={product.name}
-                  width={120}
-                  height={120}
-                  className="object-contain max-w-full max-h-full"
-                  unoptimized={isLocalhostImage(product.url_img)}
+        {categoryGroups.map((group) => {
+          const isOpen = openCategory.has(group.id);
+
+          return (
+            <div
+              key={group.id}
+              className="border border-yellow-600 rounded-2xl overflow-hidden"
+            >
+              <button
+                type="button"
+                onClick={() => toggleCategory(group.id)}
+                className="w-full flex items-center justify-between px-5 py-4 bg-zinc-900 hover:bg-zinc-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-semibold text-yellow-400">
+                    {group.name}
+                  </h2>
+                  <span className="text-xs px-2 py-1 rounded-full bg-zinc-800 text-gray-300">
+                    {group.items.length}
+                  </span>
+                </div>
+
+                <ChevronDown
+                  size={18}
+                  className={`text-gray-300 transition-transform ${
+                    isOpen ? "rotate-180" : ""
+                  }`}
                 />
-              </div>
+              </button>
 
-              <div className="text-center md:text-left">
-                <h2 className="text-lg font-semibold text-yellow-400 mb-3">
-                  {product.name}
-                </h2>
+              <div
+                className={`grid transition-all duration-300 ease-in-out ${
+                  isOpen
+                    ? "grid-rows-[1fr] opacity-100"
+                    : "grid-rows-[0fr] opacity-0"
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <div className="p-4 space-y-8">
+                    {group.items.map((product) => (
+                      <div
+                        key={product.id}
+                        className={`${cardStyle} flex flex-col md:flex-row md:items-center md:justify-between gap-6`}
+                      >
+                        <div className="flex flex-col md:flex-row items-center gap-6">
+                          <div className="w-40 h-40 min-w-40 bg-zinc-900 border border-yellow-600/20 rounded-xl flex items-center justify-center p-2">
+                            <Image
+                              src={product.url_img}
+                              alt={product.name}
+                              width={120}
+                              height={120}
+                              className="object-contain max-w-full max-h-full"
+                              unoptimized={isLocalhostImage(product.url_img)}
+                            />
+                          </div>
 
-                <p className="text-sm text-gray-400 mb-2">
-                  {product.description}
-                </p>
+                          <div className="text-center md:text-left">
+                            <h2 className="text-lg font-semibold text-yellow-400 mb-3">
+                              {product.name}
+                            </h2>
 
-                <p className="text-sm text-gray-400">
-                  Cantidad:{" "}
-                  <span
-                    className={`font-semibold ${
-                      product.amount <= 10 ? "text-red-500" : "text-white"
-                    }`}
-                  >
-                    {product.amount}
-                  </span>
-                </p>
+                            <p className="text-sm text-gray-400 mb-2">
+                              {product.description}
+                            </p>
 
-                <p className="text-sm text-gray-400">
-                  Precio:{" "}
-                  <span className="text-green-400 font-semibold">
-                    ${Math.round(product.price).toLocaleString("es-CO")}
-                  </span>
-                </p>
+                            <p className="text-sm text-gray-400">
+                              Cantidad:{" "}
+                              <span
+                                className={`font-semibold ${
+                                  product.amount <= 10
+                                    ? "text-red-500"
+                                    : "text-white"
+                                }`}
+                              >
+                                {product.amount}
+                              </span>
+                            </p>
+
+                            <p className="text-sm text-gray-400">
+                              Precio:{" "}
+                              <span className="text-green-400 font-semibold">
+                                $
+                                {Math.round(product.price).toLocaleString(
+                                  "es-CO",
+                                )}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setIsNewProduct(false);
+                            setIsModalOpen(true);
+                          }}
+                          className="bg-zinc-900 border border-white/10 p-3 rounded-xl transition-colors hover:border-yellow-500"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-
-            {/* 🔥 BOTÓN EDITAR */}
-            <button
-              onClick={() => {
-                setSelectedProduct(product);
-                setIsNewProduct(false);
-                setIsModalOpen(true);
-              }}
-              className="bg-zinc-900 border border-white/10 p-3 rounded-xl transition-colors hover:border-yellow-500"
-            >
-              <Pencil size={18} />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* 🔥 MODAL */}
@@ -190,7 +317,7 @@ export default function InventarioView() {
           setIsModalOpen(false);
         }}
         onSave={() => {
-          loadInventory();
+          loadData();
           setIsModalOpen(false);
           setSelectedProduct(null);
         }}
