@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Search, Pencil, ChevronDown } from "lucide-react";
 import { getInventory, getCategories } from "../hooks/inventory";
 import EditInventarioModal from "./editInventarioModal"; // 👈 IMPORT
 import Image from "next/image";
 import AddButton from "../../components/AddButton";
+import {
+  matchesRealtimeTopics,
+  subscribeRealtimeUpdates,
+} from "../../../utils/realtime";
 
 export default function InventarioView() {
   const [search, setSearch] = useState("");
@@ -17,7 +21,7 @@ export default function InventarioView() {
   const [categories, setCategories] = useState([]);
   const [openCategory, setOpenCategory] = useState(new Set());
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [inventoryData, categoriesData] = await Promise.all([
         getInventory(),
@@ -37,12 +41,30 @@ export default function InventarioView() {
     } catch (error) {
       console.error("Error loading data:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
-  }, []);
+  }, [loadData]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeRealtimeUpdates((event) => {
+      if (
+        matchesRealtimeTopics(event, [
+          "inventory",
+          "drinks",
+          "category",
+          "categories",
+          "product",
+          "products",
+        ])
+      ) {
+        loadData();
+      }
+    });
+
+    return () => unsubscribe();
+  }, [loadData]);
 
   // oculta la alerta automáticamente después de unos segundos
   useEffect(() => {

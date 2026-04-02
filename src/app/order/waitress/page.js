@@ -13,6 +13,10 @@ import { getDrinkTables } from "./hook/drinkTables";
 import { getOrders } from "./hook/orders";
 import { getDrinks } from "./hook/drinks";
 import { useWaitressOrders } from "./hook/useWaitressOrders";
+import {
+  matchesRealtimeTopics,
+  subscribeRealtimeUpdates,
+} from "../../../utils/realtime";
 
 const ORDER_STATUS_CANCELLED = 5;
 const ORDER_STATUS_PAID = 4;
@@ -56,7 +60,9 @@ export default function WaitressPage() {
         const order = safeOrders.find(
           (o) =>
             o.id_mesa === mesa.id &&
-            ![ORDER_STATUS_CANCELLED, ORDER_STATUS_PAID].includes(o.id_order_status)
+            ![ORDER_STATUS_CANCELLED, ORDER_STATUS_PAID].includes(
+              o.id_order_status,
+            ),
         );
 
         return {
@@ -84,12 +90,12 @@ export default function WaitressPage() {
               )
             : [],
 
-         color:
+          color:
             order && order.details.length > 0
-            ? "yellow"
-            : mesa.status === 1
-            ? "green"
-            : "red",
+              ? "yellow"
+              : mesa.status === 1
+                ? "green"
+                : "red",
         };
       });
 
@@ -106,9 +112,23 @@ export default function WaitressPage() {
 
     initData();
 
-    const refreshInterval = setInterval(() => {
-      loadData();
-    }, 3000);
+    const unsubscribe = subscribeRealtimeUpdates((event) => {
+      if (
+        matchesRealtimeTopics(event, [
+          "order",
+          "orders",
+          "table",
+          "tables",
+          "drink-table",
+          "drinks",
+          "inventory",
+          "payment",
+          "payments",
+        ])
+      ) {
+        loadData();
+      }
+    });
 
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -119,7 +139,7 @@ export default function WaitressPage() {
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      clearInterval(refreshInterval);
+      unsubscribe();
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [loadData]);
@@ -219,56 +239,57 @@ export default function WaitressPage() {
       : tables.filter((m) =>
           filtro === "Libre"
             ? m.color === "green"
-          : filtro === "En consumo"
-          ? m.color === "yellow"
-          : m.color === "red",
+            : filtro === "En consumo"
+              ? m.color === "yellow"
+              : m.color === "red",
         );
   const mesaActual = tables.find((m) => m.id === mesaActiva);
-  const mesaActualLibre = mesaActual?.status === 1 || mesaActual?.color === "green";
+  const mesaActualLibre =
+    mesaActual?.status === 1 || mesaActual?.color === "green";
 
   return (
     <ProtectedRoute allowedRoles={["1", "2"]}>
-    <div className="min-h-screen bg-gradient-to-br from-black via-[#0b0b0b] to-black text-white px-4 pt-8 pb-32">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-center text-yellow-400">
-          PANEL DE SERVICIO
-        </h1>
+      <div className="min-h-screen bg-linear-to-br from-black via-[#0b0b0b] to-black text-white px-4 pt-8 pb-32">
+        <div className="max-w-2xl mx-auto space-y-6">
+          <h1 className="text-2xl font-bold text-center text-yellow-400">
+            PANEL DE SERVICIO
+          </h1>
 
-        {/* FILTROS */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {estados.map((estado) => (
-            <button
-              key={estado}
-              onClick={() => setFiltro(estado)}
-              className={`px-4 py-2 rounded-full text-sm border transition ${
-                filtro === estado
-                  ? "bg-yellow-500 text-black border-yellow-500"
-                  : "border-yellow-500/30 text-yellow-400"
-              }`}
+          {/* FILTROS */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {estados.map((estado) => (
+              <button
+                key={estado}
+                onClick={() => setFiltro(estado)}
+                className={`px-4 py-2 rounded-full text-sm border transition ${
+                  filtro === estado
+                    ? "bg-yellow-500 text-black border-yellow-500"
+                    : "border-yellow-500/30 text-yellow-400"
+                }`}
+              >
+                {estado}
+              </button>
+            ))}
+          </div>
+
+          {/* MESAS */}
+          {mesasFiltradas.map((mesa) => (
+            <motion.div
+              key={mesa.id}
+              className="rounded-2xl border border-yellow-400/20 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden"
             >
-              {estado}
-            </button>
-          ))}
-        </div>
+              <div
+                className="flex justify-between items-center px-4 py-5 cursor-pointer"
+                onClick={() =>
+                  setMesaActiva(mesaActiva === mesa.id ? null : mesa.id)
+                }
+              >
+                <div>
+                  <h2 className="text-lg font-bold">Mesa {mesa.id}</h2>
+                  <p className="text-xs text-gray-400">Pedido: {mesa.name}</p>
+                </div>
 
-        {/* MESAS */}
-        {mesasFiltradas.map((mesa) => (
-          <motion.div
-            key={mesa.id}
-            className="rounded-2xl border border-yellow-400/20 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden"
-          >
-            <div
-              className="flex justify-between items-center px-4 py-5 cursor-pointer"
-              onClick={() =>
-                setMesaActiva(mesaActiva === mesa.id ? null : mesa.id)
-              }
-            >
-              <div>
-                <h2 className="text-lg font-bold">Mesa {mesa.id}</h2>
-                <p className="text-xs text-gray-400">Pedido: {mesa.name}</p>
-              </div>
-
-              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
                   <span
                     className={`px-2 py-1 rounded-full text-xs border ${getBadgeStyles(
                       mesa.color,
@@ -277,176 +298,180 @@ export default function WaitressPage() {
                     {mesa.items.length > 0
                       ? "En consumo"
                       : mesa.status === 1
-                      ? "Libre"
-                      : "Pendiente"}
+                        ? "Libre"
+                        : "Pendiente"}
                   </span>
 
-                <motion.div
-                  animate={{ rotate: mesaActiva === mesa.id ? 180 : 0 }}
-                >
-                  <ChevronDown size={20} />
-                </motion.div>
+                  <motion.div
+                    animate={{ rotate: mesaActiva === mesa.id ? 180 : 0 }}
+                  >
+                    <ChevronDown size={20} />
+                  </motion.div>
+                </div>
               </div>
-            </div>
 
-            <AnimatePresence>
-              {mesaActiva === mesa.id && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="border-t border-yellow-400/20 px-4 py-4 space-y-3 text-sm">
-                    {mesa.items.length === 0 ? (
-                      <p className="text-gray-400">No hay consumos activos</p>
-                    ) : (
-                      <>
-                        {mesa.items.map((item, i) => ( 
-                          <div
-                            key={i}
-                            className="flex justify-between text-gray-300"
-                          >
-                            <span>
-                              {item.nombre} {item.cantidad ? `x${item.cantidad}` : ""}
-                            </span>
+              <AnimatePresence>
+                {mesaActiva === mesa.id && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="border-t border-yellow-400/20 px-4 py-4 space-y-3 text-sm">
+                      {mesa.items.length === 0 ? (
+                        <p className="text-gray-400">No hay consumos activos</p>
+                      ) : (
+                        <>
+                          {mesa.items.map((item, i) => (
+                            <div
+                              key={i}
+                              className="flex justify-between text-gray-300"
+                            >
+                              <span>
+                                {item.nombre}{" "}
+                                {item.cantidad ? `x${item.cantidad}` : ""}
+                              </span>
 
-                            <span>
-                              $
-                              {(
-                              Number(item.precio) * (item.cantidad ? item.cantidad : 1)
-                              ).toLocaleString()}
-                            </span>
+                              <span>
+                                $
+                                {(
+                                  Number(item.precio) *
+                                  (item.cantidad ? item.cantidad : 1)
+                                ).toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+
+                          <div className="flex gap-3 pt-4">
+                            <button
+                              onClick={() => abrirEditarPedido(mesa)}
+                              className="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-400/40 text-blue-400 text-xs"
+                            >
+                              ✏️ Editar
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                cancelarPedidoConfirmacion(mesa.id)
+                              }
+                              className="px-4 py-2 rounded-xl bg-red-500/20 border border-red-400/40 text-red-400 text-xs"
+                            >
+                              ❌ Cancelar Pedido
+                            </button>
                           </div>
-                        ))}
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          ))}
+        </div>
 
-                        <div className="flex gap-3 pt-4">
-                          <button
-                            onClick={() => abrirEditarPedido(mesa)}
-                            className="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-400/40 text-blue-400 text-xs"
-                          >
-                            ✏️ Editar
-                          </button>
-
-                          <button
-                            onClick={() => cancelarPedidoConfirmacion(mesa.id)}
-                            className="px-4 py-2 rounded-xl bg-red-500/20 border border-red-400/40 text-red-400 text-xs"
-                          >
-                            ❌ Cancelar Pedido
-                          </button>
-                        </div>
-                      </>
-                    )}
+        {/* 🔥 BARRA INFERIOR */}
+        {mesaActual && (
+          <motion.div
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            className="fixed bottom-0 left-0 w-full bg-black/95 border-t border-yellow-400/20 px-4 py-5 z-40"
+          >
+            <div className="max-w-2xl mx-auto flex flex-wrap justify-between items-center gap-3">
+              {mesaActual.items.length > 0 ? (
+                <>
+                  <div>
+                    <p className="text-xs text-gray-400">
+                      Total Mesa {mesaActual.id}
+                    </p>
+                    <p className="text-2xl font-extrabold text-yellow-400">
+                      ${calcularTotal(mesaActual.items).toLocaleString()}
+                    </p>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        ))}
-      </div>
 
-      {/* 🔥 BARRA INFERIOR */}
-      {mesaActual && (
-        <motion.div
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 w-full bg-black/95 border-t border-yellow-400/20 px-4 py-5 z-40"
-        >
-          <div className="max-w-2xl mx-auto flex flex-wrap justify-between items-center gap-3">
-            {mesaActual.items.length > 0 ? (
-              <>
-                <div>
-                  <p className="text-xs text-gray-400">
-                    Total Mesa {mesaActual.id}
-                  </p>
-                  <p className="text-2xl font-extrabold text-yellow-400">
-                    ${calcularTotal(mesaActual.items).toLocaleString()}
-                  </p>
-                </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setOpenPago(true)}
+                      className="px-6 py-3 rounded-2xl bg-yellow-500 text-black font-bold"
+                    >
+                      💳 Pagar
+                    </button>
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setOpenPago(true)}
-                    className="px-6 py-3 rounded-2xl bg-yellow-500 text-black font-bold"
-                  >
-                    💳 Pagar
-                  </button>
+                    <button
+                      onClick={() => setOpenModal(true)}
+                      className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
+                    >
+                      ➕ Agregar
+                    </button>
 
-                  <button
-                    onClick={() => setOpenModal(true)}
-                    className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold"
-                  >
-                    ➕ Agregar
-                  </button>
-
-                  <button
-                    onClick={() => abrirConfirmacionLiberar(mesaActual.id)}
-                    className="px-6 py-3 rounded-2xl bg-red-500 text-white font-bold"
-                  >
-                    🗑 Liberar
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <p
-                    className={`text-xl font-bold ${
-                      mesaActualLibre ? "text-green-400" : "text-red-400"
-                    }`}
-                  >
-                    {mesaActualLibre ? "Disponible" : "Pendiente"}
-                  </p>
-                </div>
-
-                <div className="flex gap-3 w-full sm:w-auto">
-                  <button
-                    onClick={() => ocuparMesa(mesaActual.id)}
-                    className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold w-full sm:w-auto"
-                  >
-                    ➕ Ocupar Mesa
-                  </button>
-
-                  {!mesaActualLibre && (
                     <button
                       onClick={() => abrirConfirmacionLiberar(mesaActual.id)}
-                      className="px-6 py-3 rounded-2xl bg-red-500 text-white font-bold w-full sm:w-auto"
+                      className="px-6 py-3 rounded-2xl bg-red-500 text-white font-bold"
                     >
-                      🗑 Liberar Mesa
+                      🗑 Liberar
                     </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </motion.div>
-      )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p
+                      className={`text-xl font-bold ${
+                        mesaActualLibre ? "text-green-400" : "text-red-400"
+                      }`}
+                    >
+                      {mesaActualLibre ? "Disponible" : "Pendiente"}
+                    </p>
+                  </div>
 
-      {/* MODALES */}
-      <PedidoModal
-        isOpen={openModal}
-        onClose={() => setOpenModal(false)}
-        mesaId={mesaActual?.id}
-        productosDB={drinksDisponibles}
-        onAgregarProductos={agregarProductosAMesa}
-      />
+                  <div className="flex gap-3 w-full sm:w-auto">
+                    <button
+                      onClick={() => ocuparMesa(mesaActual.id)}
+                      className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold w-full sm:w-auto"
+                    >
+                      ➕ Ocupar Mesa
+                    </button>
 
-      <ModalPago
-        abierto={openPago}      
-        onClose={() => setOpenPago(false)}
-        total={calcularTotal(mesaActual?.items || [])}
-        descripcion="Pedido completo"
-        onConfirmarPago={confirmarPago}
-      />
+                    {!mesaActualLibre && (
+                      <button
+                        onClick={() => abrirConfirmacionLiberar(mesaActual.id)}
+                        className="px-6 py-3 rounded-2xl bg-red-500 text-white font-bold w-full sm:w-auto"
+                      >
+                        🗑 Liberar Mesa
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
 
-      <ModalEditPedidos
-        isOpen={openEditar}
-        onClose={() => setOpenEditar(false)}
-        mesa={mesaEditando}
-        productosDB={drinksDisponibles}
-        onGuardarCambios={actualizarPedidoMesa}
-      />
-    </div>
+        {/* MODALES */}
+        <PedidoModal
+          isOpen={openModal}
+          onClose={() => setOpenModal(false)}
+          mesaId={mesaActual?.id}
+          productosDB={drinksDisponibles}
+          onAgregarProductos={agregarProductosAMesa}
+        />
+
+        <ModalPago
+          abierto={openPago}
+          onClose={() => setOpenPago(false)}
+          total={calcularTotal(mesaActual?.items || [])}
+          descripcion="Pedido completo"
+          onConfirmarPago={confirmarPago}
+        />
+
+        <ModalEditPedidos
+          isOpen={openEditar}
+          onClose={() => setOpenEditar(false)}
+          mesa={mesaEditando}
+          productosDB={drinksDisponibles}
+          onGuardarCambios={actualizarPedidoMesa}
+        />
+      </div>
     </ProtectedRoute>
   );
 }

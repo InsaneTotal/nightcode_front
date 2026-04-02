@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TrendingUp, TrendingDown, Minus, Activity, Menu } from "lucide-react";
 
@@ -14,6 +14,10 @@ import ProtectedRoute from "../../../routes/protectedRoutes";
 import { getOrders, getSoldDrinks } from "../../order/waitress/hook/orders";
 import { getDrinks } from "../../order/waitress/hook/drinks";
 import { useApp } from "../../../context/AppContext";
+import {
+  matchesRealtimeTopics,
+  subscribeRealtimeUpdates,
+} from "../../../utils/realtime";
 
 /* ================= COUNTER ================= */
 
@@ -31,111 +35,153 @@ function Counter({ value }) {
 /* ================= DASHBOARD ================= */
 
 export default function DashboardPage() {
-  const { usuario } = useApp();
+  const { usuario, authLoading } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [activeView, setActiveView] = useState("dashboard");
   const [sales, setSales] = useState(0);
   const [bestSales, setBestSales] = useState([]);
   const [currentAlert, setCurrentAlert] = useState(0);
   const [lowStockDrinks, setLowStockDrinks] = useState([]);
+  const canFetchDashboardData =
+    !authLoading &&
+    typeof window !== "undefined" &&
+    Boolean(localStorage.getItem("accessToken")) &&
+    String(usuario?.role?.id || "") === "1";
 
-  useEffect(() => {
-    const getDailySales = async () => {
-      try {
-        const dailySales = await getOrders();
+  const loadDailySales = useCallback(async () => {
+    if (!canFetchDashboardData) return;
 
-        // Filtrar solo las ventas del día actual
-        const today = new Date();
-        const startOfDay = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-          0,
-          0,
-          0,
+    try {
+      const dailySales = await getOrders();
+
+      const today = new Date();
+      const startOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+        0,
+        0,
+        0,
+        0,
+      );
+      const endOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+        23,
+        59,
+        59,
+        999,
+      );
+      const dailySalesToday = dailySales.filter((order) => {
+        if (!order.date_order) return false;
+        const orderDate = new Date(order.date_order);
+        return orderDate >= startOfDay && orderDate <= endOfDay;
+      });
+
+      let totalSales = 0;
+      if (dailySalesToday.length > 0) {
+        totalSales = dailySalesToday.reduce(
+          (sum, order) => sum + order.total,
           0,
         );
-        const endOfDay = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-          23,
-          59,
-          59,
-          999,
-        );
-        const dailySalesToday = dailySales.filter((order) => {
-          if (!order.date_order) return false;
-          const orderDate = new Date(order.date_order);
-          return orderDate >= startOfDay && orderDate <= endOfDay;
-        });
-        let totalSales = 0;
-        if (dailySalesToday.length > 0) {
-          totalSales = dailySalesToday.reduce(
-            (sum, order) => sum + order.total,
-            0,
-          );
-        }
-        setSales(totalSales);
-      } catch (error) {
-        console.error("Error fetching daily sales:", error);
       }
-    };
-    getDailySales();
-    const interval = setInterval(getDailySales, 30000); // 30 segundos
-    return () => clearInterval(interval);
-  }, [sales]);
+
+      setSales(totalSales);
+    } catch (error) {
+      console.error("Error fetching daily sales:", error);
+    }
+  }, [canFetchDashboardData]);
+
+  const loadSoldDrinksData = useCallback(async () => {
+    if (!canFetchDashboardData) return;
+
+    try {
+      const soldDrinks = await getSoldDrinks();
+
+      if (!soldDrinks || soldDrinks.length === 0) {
+        console.warn("No sold drinks data available");
+        setBestSales([]);
+        return;
+      }
+
+      setBestSales(soldDrinks);
+    } catch (error) {
+      console.error("Error fetching sold drinks:", error);
+    }
+  }, [canFetchDashboardData]);
+
+  const loadLowStockDrink = useCallback(async () => {
+    if (!canFetchDashboardData) return;
+
+    try {
+      const drinks = await getDrinks();
+
+      if (drinks instanceof Error) {
+        return "Error al cargar las bebidas";
+      }
+
+      const lowStock = drinks.filter((drink) => drink.amount <= 30);
+
+      setLowStockDrinks(lowStock);
+    } catch (error) {
+      console.error("Error fetching low stock drinks:", error);
+    }
+  }, [canFetchDashboardData]);
+
+  const loadDashboardData = useCallback(async () => {
+    await Promise.all([
+      loadDailySales(),
+      loadSoldDrinksData(),
+      loadLowStockDrink(),
+    ]);
+  }, [loadDailySales, loadSoldDrinksData, loadLowStockDrink]);
 
   useEffect(() => {
-    const getSoldDrinksData = async () => {
-      try {
-        const soldDrinks = await getSoldDrinks();
+    const timeoutId = window.setTimeout(() => {
+      loadDashboardData();
+    }, 0);
 
-        if (!soldDrinks || soldDrinks.length === 0) {
-          console.warn("No sold drinks data available");
-          return;
-        }
-
-        setBestSales(soldDrinks);
-        console.log(soldDrinks);
-        // Procesar los datos de bebidas vendidas
-      } catch (error) {
-        console.error("Error fetching sold drinks:", error);
-      }
-    };
-    getSoldDrinksData();
-  }, []);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadDashboardData]);
 
   useEffect(() => {
-    const getLowStockDrink = async () => {
-      try {
-        const drinks = await getDrinks();
+    if (!canFetchDashboardData) return;
 
-        if (drinks instanceof Error) {
-          return "Error al cargar las bebidas";
-        }
+    const unsubscribe = subscribeRealtimeUpdates((event) => {
+      if (
+        matchesRealtimeTopics(event, [
+          "order",
+          "orders",
+          "payment",
+          "payments",
+          "inventory",
+          "drinks",
+          "categories",
+          "table",
+          "tables",
+        ])
+      ) {
+        loadDashboardData();
+      }
+    });
 
-        const lowStock = drinks.filter((drink) => drink.amount <= 30);
-
-        setLowStockDrinks(lowStock);
-        console.log(lowStock);
-      } catch (error) {}
-    };
-
-    getLowStockDrink();
-  }, []);
+    return () => unsubscribe();
+  }, [canFetchDashboardData, loadDashboardData]);
 
   const currentProduct = lowStockDrinks[currentAlert % lowStockDrinks.length];
 
   // console.log(currentProduct);
   useEffect(() => {
+    if (!canFetchDashboardData) return;
+
     const interval = setInterval(() => {
       setCurrentAlert((prev) =>
         prev >= lowStockDrinks.length - 1 ? 0 : prev + 1,
       );
     }, 3000);
     return () => clearInterval(interval);
-  }, [lowStockDrinks.length]);
+  }, [canFetchDashboardData, lowStockDrinks.length]);
 
   const getSeverity = (stock) => {
     if (stock <= 10) return "text-red-500";

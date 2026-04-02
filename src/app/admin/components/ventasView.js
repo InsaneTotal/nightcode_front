@@ -5,6 +5,10 @@ import { motion } from "framer-motion";
 import { generarPdfVentas } from "../utils/pdfVentas";
 import { getOrders } from "../../order/waitress/hook/orders";
 import { getPayments } from "../../order/waitress/hook/payOrder";
+import {
+  matchesRealtimeTopics,
+  subscribeRealtimeUpdates,
+} from "../../../utils/realtime";
 
 const ORDER_STATUS_PAID = 4;
 
@@ -111,11 +115,15 @@ export default function VentasView() {
   useEffect(() => {
     loadVentas();
 
-    const interval = setInterval(() => {
-      loadVentas();
-    }, 10000);
+    const unsubscribe = subscribeRealtimeUpdates((event) => {
+      if (
+        matchesRealtimeTopics(event, ["order", "orders", "payment", "payments"])
+      ) {
+        loadVentas();
+      }
+    });
 
-    return () => clearInterval(interval);
+    return () => unsubscribe();
   }, [loadVentas]);
 
   const ventasFiltradas = useMemo(() => {
