@@ -9,6 +9,7 @@ import {
   Users,
   DollarSign,
   CheckIcon,
+  LockIcon,
 } from "lucide-react";
 import EditEmpleadosModal from "./EditEmpleadosModal";
 import Swal from "sweetalert2";
@@ -24,6 +25,8 @@ export default function EmpleadosView() {
   const [empleados, setEmpleados] = useState([]);
   const [empleadosActivos, setEmpleadosActivos] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalPasswordOpen, setModalPasswordOpen] = useState(false);
+  const [changePassword, setChangePassword] = useState(null);
   const [empleadoEditar, setEmpleadoEditar] = useState(null);
   const [mostratAlertaCreacion, setMostratAlertaCreacion] = useState(false);
   const [mensajeCreacion, setMensajeCreacion] = useState("");
@@ -147,6 +150,7 @@ export default function EmpleadosView() {
             setEmpleadoEditar(null);
             setModalOpen(true);
           }}
+          text={"Empleado"}
         />
       </div>
 
@@ -221,6 +225,15 @@ export default function EmpleadosView() {
                       className="text-red-500 hover:text-red-400 transition"
                     >
                       <Trash2 size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setChangePassword(emp);
+                        setModalPasswordOpen(true);
+                      }}
+                      className="text-yellow-400 hover:text-yellow-300 transition"
+                    >
+                      <LockIcon size={16} />
                     </button>
                   </div>
                 ) : (
