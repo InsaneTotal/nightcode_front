@@ -95,7 +95,7 @@ export default function VentasView() {
           order.created_at ||
           new Date().toISOString(),
         metodo: getMetodoPago(order, metodos),
-        empleado: getNombreEmpleado(order),
+        empleado: order.full_name || "Sin Empleado",
         total: Number(order.total || 0),
         productos: (order.details || []).map((detail) => ({
           nombre: detail?.drink?.name || "Producto desconocido",

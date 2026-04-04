@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Search, Pencil, ChevronDown } from "lucide-react";
 import { getInventory, getCategories } from "../hooks/inventory";
 import EditInventarioModal from "./editInventarioModal"; // 👈 IMPORT
+import AddCategoryModal from "./addCategoryModal";
 import Image from "next/image";
 import AddButton from "../../components/AddButton";
 import {
@@ -15,6 +16,7 @@ export default function InventarioView() {
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [isNewProduct, setIsNewProduct] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -183,14 +185,23 @@ export default function InventarioView() {
             className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
           />
         </div>
+        <div className="flex gap-4">
+          <AddButton
+            onClick={() => {
+              setCategoryModalOpen(true);
+            }}
+            text={"Categoria"}
+          />
 
-        <AddButton
-          onClick={() => {
-            setSelectedProduct(null);
-            setIsModalOpen(true);
-            setIsNewProduct(true);
-          }}
-        />
+          <AddButton
+            onClick={() => {
+              setSelectedProduct(null);
+              setIsModalOpen(true);
+              setIsNewProduct(true);
+            }}
+            text={"Producto"}
+          />
+        </div>
       </div>
       <div className="space-y-8">
         {categoryGroups.length === 0 && (
@@ -309,6 +320,16 @@ export default function InventarioView() {
       </div>
 
       {/* 🔥 MODAL */}
+
+      <AddCategoryModal
+        isOpen={categoryModalOpen}
+        onClose={() => {
+          setCategoryModalOpen(false);
+        }}
+        onSave={() => {
+          setCategoryModalOpen(false);
+        }}
+      />
 
       <EditInventarioModal
         isOpen={isModalOpen}

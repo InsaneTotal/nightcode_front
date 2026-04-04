@@ -3,14 +3,11 @@ import { authFetch } from "../../../utils/authFetch";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function getInventory() {
-  const response = await authFetch(
-    `${API_URL}/api/authinventory/drinks/`,
-    {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
+  const response = await authFetch(`${API_URL}/api/authinventory/drinks/`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
     },
-  );
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch inventory");
@@ -50,17 +47,14 @@ export async function updateInventory(id, updatedData) {
 }
 
 export async function createInventory(drinkData) {
-  const response = await authFetch(
-    `${API_URL}/api/authinventory/drinks/`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
-      body: JSON.stringify(drinkData),
+  const response = await authFetch(`${API_URL}/api/authinventory/drinks/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
     },
-  );
+    body: JSON.stringify(drinkData),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to create inventory item");
@@ -71,14 +65,11 @@ export async function createInventory(drinkData) {
 }
 
 export async function getCategories() {
-  const response = await authFetch(
-    `${API_URL}/api/authinventory/categories/`,
-    {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
+  const response = await authFetch(`${API_URL}/api/authinventory/categories/`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
     },
-  );
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch categories");
@@ -89,20 +80,42 @@ export async function getCategories() {
 }
 
 export async function createCategory(categoryData) {
-  const response = await authFetch(
-    `http://localhost:8000/api/authinventory/categories/`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
-      body: JSON.stringify(categoryData),
+  const response = await authFetch(`${API_URL}/api/authinventory/categories/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
     },
-  );
+    body: JSON.stringify(categoryData),
+  });
 
   if (!response.ok) {
-    throw new Error("Failed to create category");
+    let errorData = null;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = null;
+    }
+
+    const rawMessage = Array.isArray(errorData)
+      ? errorData[0]
+      : typeof errorData === "string"
+        ? errorData
+        : errorData?.name?.[0] ||
+          errorData?.non_field_errors?.[0] ||
+          errorData?.detail ||
+          errorData?.message ||
+          "";
+
+    const normalizedMessage = String(rawMessage).toLowerCase();
+    const message = normalizedMessage.includes("already exists")
+      ? "Esta categoría ya existe"
+      : normalizedMessage.includes("nombre") &&
+          normalizedMessage.includes("exists")
+        ? "Esta categoría ya existe"
+        : rawMessage || "Error al crear la categoría";
+
+    throw new Error(message);
   }
 
   const res = { message: "Categoría creada con éxito" };
