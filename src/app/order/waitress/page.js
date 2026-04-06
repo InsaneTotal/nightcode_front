@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDown, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PedidoModal from "./components/modalAdd";
 import ModalPago from "./components/modalPay";
@@ -30,6 +30,9 @@ export default function WaitressPage() {
   const [filtro, setFiltro] = useState("Todas");
   const [tables, setTables] = useState([]);
   const [drinks, setDrinks] = useState([]);
+  const [pendingNotices, setPendingNotices] = useState([]);
+  const lastPendingIdsRef = useRef([]);
+  const noticeTimeoutsRef = useRef({});
 
   const {
     agregarProductosAMesa: hookAgregarProductos,
@@ -176,6 +179,7 @@ export default function WaitressPage() {
 
   const liberarMesa = async (id) => {
     await hookLiberarMesa(tables, id);
+    dismissPendingNotice(id);
     await loadData();
   };
 
@@ -202,6 +206,7 @@ export default function WaitressPage() {
 
   const ocuparMesa = async (id) => {
     await hookOcuparMesa(tables, id);
+    dismissPendingNotice(id);
     setMesaActiva(id);
     setOpenModal(true);
   };
@@ -231,6 +236,55 @@ export default function WaitressPage() {
   const abrirEditarPedido = (mesa) => {
     setMesaEditando(mesa);
     setOpenEditar(true);
+  };
+
+  useEffect(() => {
+    const pendingIds = tables.filter((t) => t.color === "red").map((t) => t.id);
+    const newPendingIds = pendingIds.filter(
+      (id) => !lastPendingIdsRef.current.includes(id),
+    );
+    const removedPendingIds = lastPendingIdsRef.current.filter(
+      (id) => !pendingIds.includes(id),
+    );
+
+    newPendingIds.forEach((id) => {
+      const notice = {
+        tableId: id,
+        message: `Mesa ${id} está llamando`,
+      };
+      setPendingNotices((prev) => [...prev, notice]);
+      const timeoutId = setTimeout(
+        () => {
+          setPendingNotices((prev) =>
+            prev.filter((n) => n.tableId !== id),
+          );
+        },
+        120000,
+      );
+      noticeTimeoutsRef.current[id] = timeoutId;
+    });
+
+    removedPendingIds.forEach((id) => {
+      if (noticeTimeoutsRef.current[id]) {
+        clearTimeout(noticeTimeoutsRef.current[id]);
+        delete noticeTimeoutsRef.current[id];
+      }
+      setPendingNotices((prev) =>
+        prev.filter((n) => n.tableId !== id),
+      );
+    });
+
+    lastPendingIdsRef.current = pendingIds;
+  }, [tables]);
+
+  const dismissPendingNotice = (tableId) => {
+    if (noticeTimeoutsRef.current[tableId]) {
+      clearTimeout(noticeTimeoutsRef.current[tableId]);
+      delete noticeTimeoutsRef.current[tableId];
+    }
+    setPendingNotices((prev) =>
+      prev.filter((n) => n.tableId !== tableId),
+    );
   };
 
   const mesasFiltradas =
@@ -471,6 +525,39 @@ export default function WaitressPage() {
           productosDB={drinksDisponibles}
           onGuardarCambios={actualizarPedidoMesa}
         />
+
+        {/* Notificacion Flotante */}
+        <div className="fixed right-4 top-4 z-50 w-[min(92vw,22rem)] pointer-events-none">
+          <AnimatePresence>
+            {pendingNotices.map((notice) => (
+              <motion.div
+                key={notice.tableId}
+                initial={{ opacity: 0, x: 40, scale: 0.96 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 40, scale: 0.96 }}
+                transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                className="pointer-events-auto mb-3 rounded-2xl border border-red-500/40 bg-black/90 shadow-2xl backdrop-blur-md p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-red-200">
+                      Llamada de mesero
+                    </p>
+                    <p className="mt-1 text-sm text-red-100 break-words">
+                      {notice.message}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => dismissPendingNotice(notice.tableId)}
+                    className="shrink-0 p-1 text-red-100 hover:bg-red-500/20 rounded-full border border-red-400/30 transition"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
     </ProtectedRoute>
   );

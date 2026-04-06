@@ -128,10 +128,15 @@ export default function MenuLicores() {
     setOpenSection(openSection === section ? null : section);
   };
 
-  const handleCallWaiter = async () => {
+  const getMesaAndToken = () => {
     const params = new URLSearchParams(window.location.search);
     const mesaId = params.get("mesa") || sessionStorage.getItem("mesaId");
     const token = params.get("token") || sessionStorage.getItem("mesa_token");
+    return { mesaId, token };
+  };
+
+  const handleCallWaiter = async () => {
+    const { mesaId, token } = getMesaAndToken();
 
     if (!mesaId || !token) {
       setWaiterFeedback("QR inválido: falta token de mesa");
