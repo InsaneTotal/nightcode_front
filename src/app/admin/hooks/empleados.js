@@ -4,16 +4,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function createEmpleado(user) {
   try {
-    const response = await authFetch(
-      `${API_URL}/api/authusers/users/`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(user),
+    const response = await authFetch(`${API_URL}/api/authusers/users/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify(user),
+    });
 
     if (!response.ok) {
       throw new Error("Error al guardar el usuario.");
@@ -30,16 +27,13 @@ export async function createEmpleado(user) {
 
 export async function updateEmpleado(id, user) {
   try {
-    const response = await authFetch(
-      `${API_URL}/api/authusers/users/${id}/`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(user),
+    const response = await authFetch(`${API_URL}/api/authusers/users/${id}/`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify(user),
+    });
 
     if (!response.ok) {
       throw new Error("Error al actualizar el usuario.");
@@ -57,9 +51,7 @@ export async function updateEmpleado(id, user) {
 
 export async function getEmpleados() {
   try {
-    const response = await authFetch(
-      `${API_URL}/api/authusers/users/`,
-    );
+    const response = await authFetch(`${API_URL}/api/authusers/users/`);
     if (!response.ok) {
       throw new Error("Error al obtener los empleados.");
     }
@@ -107,6 +99,37 @@ export async function activateEmpleado(id, empleado) {
     if (!response.ok) {
       throw new Error("Error al activar el empleado.");
     }
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function changePassword(id, newPassword, confirmPassword) {
+  try {
+    const response = await authFetch(
+      `${API_URL}/api/authusers/users/${id}/change-password/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          password: newPassword,
+          confirm_password: confirmPassword,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      const errorMessage =
+        errorData.message || "Error al cambiar la contraseña.";
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    const successMessage = data.message || "Contraseña cambiada exitosamente.";
+    return successMessage;
   } catch (error) {
     throw error;
   }
