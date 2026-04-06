@@ -2,7 +2,14 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { TrendingUp, TrendingDown, Minus, Activity, Menu } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Activity,
+  Menu,
+  X,
+} from "lucide-react";
 
 import DashboardChart from "../components/dashboardChart";
 import InventarioView from "../components/inventarioView";
@@ -37,6 +44,7 @@ function Counter({ value }) {
 export default function DashboardPage() {
   const { usuario, authLoading } = useApp();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeView, setActiveView] = useState("dashboard");
   const [sales, setSales] = useState(0);
   const [bestSales, setBestSales] = useState([]);
@@ -237,14 +245,75 @@ export default function DashboardPage() {
   const cardStyle =
     "relative bg-gradient-to-br from-[#050816] via-[#0a0f2a] to-black border border-yellow-500/20 rounded-2xl p-6 shadow-xl hover:shadow-yellow-500/10 transition-all duration-300 backdrop-blur-sm";
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const previous = document.body.style.overflow;
+
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = previous || "";
+    }
+
+    return () => {
+      document.body.style.overflow = previous || "";
+    };
+  }, [mobileMenuOpen]);
+
+  const drawerVariants = {
+    closed: {
+      x: "-105%",
+      opacity: 0.96,
+      transition: {
+        type: "spring",
+        stiffness: 420,
+        damping: 42,
+      },
+    },
+    open: {
+      x: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 360,
+        damping: 34,
+      },
+    },
+  };
+
+  const listVariants = {
+    closed: {
+      transition: {
+        staggerChildren: 0.03,
+        staggerDirection: -1,
+      },
+    },
+    open: {
+      transition: {
+        delayChildren: 0.12,
+        staggerChildren: 0.04,
+      },
+    },
+  };
+
+  const itemVariants = {
+    closed: { opacity: 0, x: -10 },
+    open: { opacity: 1, x: 0 },
+  };
+
+  const handleSelectView = (viewKey) => {
+    setActiveView(viewKey);
+    setMobileMenuOpen(false);
+  };
+
   return (
     <ProtectedRoute allowedRoles={["1"]}>
-      <div className="min-h-screen bg-linear-to-br from-black via-[#050816] to-[#0a0f2a] text-white flex">
+      <div className="min-h-screen w-full overflow-x-hidden bg-linear-to-br from-black via-[#050816] to-[#0a0f2a] text-white flex">
         {/* ================= SIDEBAR ================= */}
 
         <motion.aside
           animate={{ width: collapsed ? 80 : 250 }}
-          className="bg-linear-to-b from-black via-[#050816] to-[#0a0f2a] border-r border-yellow-500/20 p-6 flex flex-col justify-between"
+          className="hidden md:flex bg-linear-to-b from-black via-[#050816] to-[#0a0f2a] border-r border-yellow-500/20 p-6 flex-col justify-between"
         >
           <div>
             <button
@@ -259,7 +328,7 @@ export default function DashboardPage() {
                 {menuItems.map((item) => (
                   <button
                     key={item.key}
-                    onClick={() => setActiveView(item.key)}
+                    onClick={() => handleSelectView(item.key)}
                     className={`block w-full text-left px-4 py-3 rounded-xl text-lg transition-all ${
                       activeView === item.key
                         ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/30"
@@ -276,7 +345,7 @@ export default function DashboardPage() {
           {!collapsed && (
             <div className="border-t border-yellow-500/20 pt-6">
               <button
-                onClick={() => setActiveView("configuracion")}
+                onClick={() => handleSelectView("configuracion")}
                 className="w-full flex items-center gap-3 bg-[#0a0f2a] p-3 rounded-xl border border-yellow-500/20 hover:border-yellow-500/40 transition"
               >
                 <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">
@@ -295,9 +364,106 @@ export default function DashboardPage() {
           )}
         </motion.aside>
 
+        {/* ================= SIDEBAR MÓVIL OVERLAY ================= */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.button
+              type="button"
+              aria-label="Cerrar menú"
+              className="fixed inset-0 z-40 bg-black/65 backdrop-blur-[2px] md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              onClick={() => setMobileMenuOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.aside
+              initial="closed"
+              animate="open"
+              exit="closed"
+              variants={drawerVariants}
+              className="fixed left-0 top-0 z-50 h-full w-[84vw] max-w-[320px] border-r border-yellow-500/20 bg-linear-to-b from-black via-[#050816] to-[#0a0f2a] p-5 md:hidden shadow-[12px_0_40px_rgba(0,0,0,0.6)]"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-yellow-400">Menú</h3>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-yellow-400 hover:text-yellow-300"
+                  aria-label="Cerrar menú lateral"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <motion.nav
+                variants={listVariants}
+                initial="closed"
+                animate="open"
+                exit="closed"
+                className="space-y-2 text-gray-300"
+              >
+                {menuItems.map((item) => (
+                  <motion.button
+                    variants={itemVariants}
+                    key={item.key}
+                    onClick={() => handleSelectView(item.key)}
+                    className={`block w-full text-left px-4 py-3 rounded-xl text-base transition-all ${
+                      activeView === item.key
+                        ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/30"
+                        : "hover:text-yellow-400 hover:bg-white/5"
+                    }`}
+                  >
+                    {item.label}
+                  </motion.button>
+                ))}
+              </motion.nav>
+
+              <motion.div
+                variants={itemVariants}
+                initial="closed"
+                animate="open"
+                exit="closed"
+                className="mt-8 border-t border-yellow-500/20 pt-5"
+              >
+                <button
+                  onClick={() => handleSelectView("configuracion")}
+                  className="w-full flex items-center gap-3 bg-[#0a0f2a] p-3 rounded-xl border border-yellow-500/20"
+                >
+                  <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">
+                    {(usuario?.name || "U").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <p className="text-sm font-semibold text-yellow-400 truncate">
+                      {usuario?.name || "Usuario"}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {usuario?.role?.name || "Sin rol"}
+                    </p>
+                  </div>
+                </button>
+              </motion.div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
         {/* ================= MAIN ================= */}
 
-        <main className="flex-1 p-12 space-y-12">
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-10 lg:p-12 space-y-8 md:space-y-12">
+          <div className="md:hidden mb-1">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-black/30 px-3 py-2 text-yellow-400"
+              aria-label="Abrir menú lateral"
+            >
+              <Menu size={18} />
+            </button>
+          </div>
+
           <AnimatePresence mode="wait">
             {activeView === "dashboard" && (
               <motion.div
@@ -307,14 +473,14 @@ export default function DashboardPage() {
                 exit={{ opacity: 0, x: -40 }}
                 transition={{ duration: 0.3 }}
               >
-                <h2 className="text-4xl font-bold text-yellow-500 tracking-wide mb-12">
+                <h2 className="text-3xl sm:text-4xl font-bold text-yellow-500 tracking-wide mb-6 sm:mb-8 md:mb-12">
                   Dashboard
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-14">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-8 md:mb-14">
                   <div
                     className={cardStyle}
-                    onClick={() => setActiveView("ventas")}
+                    onClick={() => handleSelectView("ventas")}
                   >
                     <p className="text-gray-400 flex items-center gap-2">
                       Ventas en Vivo
@@ -345,7 +511,7 @@ export default function DashboardPage() {
 
                   <div
                     className={cardStyle}
-                    onClick={() => setActiveView("inventario")}
+                    onClick={() => handleSelectView("inventario")}
                   >
                     <p className="text-gray-400">Alertas</p>
                     <p className="text-3xl font-bold text-yellow-500 mt-3">
@@ -365,7 +531,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className={`${cardStyle} mb-14`}>
+                <div className={`${cardStyle} mb-8 md:mb-14`}>
                   <h3 className="text-yellow-500 text-lg mb-6">
                     Rendimiento de Ventas
                   </h3>
@@ -380,7 +546,7 @@ export default function DashboardPage() {
                   {orders.map((order, i) => (
                     <div
                       key={i}
-                      className="flex justify-between items-center py-3 border-b border-yellow-500/10 text-sm"
+                      className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4 py-3 border-b border-yellow-500/10 text-sm"
                     >
                       <span>Mesa {order.mesa}</span>
                       <span>{order.mesero}</span>

@@ -297,6 +297,7 @@ export default function EditInventarioModal({
 
           {/* FORM */}
           <div className="flex-1 space-y-6">
+            <label className="text-gray-400 mb-2 block">Nombre:</label>
             <motion.input
               initial={{ scale: 1.05 }}
               animate={{ scale: 1 }}
