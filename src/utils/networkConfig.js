@@ -5,7 +5,8 @@ export const BACKEND_CONNECTION_ERROR =
 
 export function getApiBase() {
   const fromEnv = process.env.NEXT_PUBLIC_API_URL;
-  const resolved = fromEnv && fromEnv.trim() ? fromEnv.trim() : DEFAULT_API_BASE;
+  const resolved =
+    fromEnv && fromEnv.trim() ? fromEnv.trim() : DEFAULT_API_BASE;
   return resolved.replace(/\/$/, "");
 }
 

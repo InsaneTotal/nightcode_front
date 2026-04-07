@@ -60,7 +60,7 @@ export default function AddCategoryModal({ isOpen, onClose, onSave }) {
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.2 }}
-        className="w-full max-w-4xl bg-linear-to-br from-zinc-900 via-zinc-950 to-black border border-yellow-600/30 rounded-2xl p-8 relative"
+        className="w-full max-w-md bg-linear-to-br from-[#4b2c4f] to-[#2e1b30]  border border-yellow-600/30 rounded-2xl p-8 relative"
       >
         <button
           onClick={handleClose}
@@ -69,7 +69,9 @@ export default function AddCategoryModal({ isOpen, onClose, onSave }) {
           <X />
         </button>
         <div className="flex-1 space-y-6">
-          <h2>Agregar Categoría</h2>
+          <h2 className="text-yellow-500 text-2xl font-semibold mb-6 text-center col-span-2">
+            Agregar Categoría
+          </h2>
           <div className="mt-4">
             <label className="text-gray-400 mb-2 block">
               Nombre categoría:
@@ -86,6 +88,7 @@ export default function AddCategoryModal({ isOpen, onClose, onSave }) {
                 if (errorMessage) setErrorMessage("");
               }}
               className="w-2/3 pl-2 bg-transparent border border-yellow-600/20 rounded-lg py-1 text-yellow-500 focus:outline-none focus:border-yellow-500"
+              // className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
             />
             {errorMessage && (
               <div
