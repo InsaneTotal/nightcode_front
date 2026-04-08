@@ -13,6 +13,9 @@ const getOrderUrl = (orderId) => ORDERS_BASE_URL + String(orderId) + "/";
 const getOrderPayUrl = (orderId) => getOrderUrl(orderId) + "pay/";
 const getTableUrl = (tableId) => `${API_URL}/api/order/drink-tables/${tableId}/`;
 
+const getTableStatusId = (mesa) =>
+  Number(mesa?.status ?? mesa?.id_status ?? mesa?.id_table_status ?? 0);
+
 const syncTableStatus = async (tableId, statusId) => {
   const payloads = [
     { status: statusId },
@@ -39,6 +42,7 @@ const syncTableStatus = async (tableId, statusId) => {
 
 const transformOrdersToTables = (tablesData, ordersData) => {
   return tablesData.map((mesa) => {
+    const tableStatusId = getTableStatusId(mesa);
     const order = ordersData.find(
       (o) =>
         o.id_mesa === mesa.id &&
@@ -72,8 +76,10 @@ const transformOrdersToTables = (tablesData, ordersData) => {
       color:
         order && order.details.length > 0
           ? "yellow"
-          : mesa.status === 1
+          : tableStatusId === TABLE_STATUS_FREE
           ? "green"
+          : tableStatusId === TABLE_STATUS_OCCUPIED
+          ? "yellow"
           : "red",
     };
   });
@@ -220,7 +226,12 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
     }
   };
 
-  const confirmarPago = async (tables, mesaActiva, metodoPago) => {
+  const confirmarPago = async (
+    tables,
+    mesaActiva,
+    metodoPago,
+    liberarMesa = true,
+  ) => {
     try {
       const mesa = tables.find((m) => m.id === mesaActiva);
 
@@ -243,22 +254,39 @@ export function useWaitressOrders(setTables, setMesaActiva, setOpenPago) {
         throw new Error("Error al pagar");
       }
 
-      await syncTableStatus(mesaActiva, TABLE_STATUS_FREE);
+      if (liberarMesa) {
+        await syncTableStatus(mesaActiva, TABLE_STATUS_FREE);
 
-      setTables((prev) =>
-        prev.map((mesaItem) =>
-          mesaItem.id === mesaActiva
-            ? {
-                ...mesaItem,
-                status: TABLE_STATUS_FREE,
-                estado: "Libre",
-                color: "green",
-                items: [],
-                orderId: null,
-              }
-            : mesaItem,
-        ),
-      );
+        setTables((prev) =>
+          prev.map((mesaItem) =>
+            mesaItem.id === mesaActiva
+              ? {
+                  ...mesaItem,
+                  status: TABLE_STATUS_FREE,
+                  estado: "Libre",
+                  color: "green",
+                  items: [],
+                  orderId: null,
+                }
+              : mesaItem,
+          ),
+        );
+      } else {
+        await syncTableStatus(mesaActiva, TABLE_STATUS_OCCUPIED);
+
+        setTables((prev) =>
+          prev.map((mesaItem) =>
+            mesaItem.id === mesaActiva
+              ? {
+                  ...mesaItem,
+                  status: TABLE_STATUS_OCCUPIED,
+                  estado: "En consumo",
+                  color: "yellow",
+                }
+              : mesaItem,
+          ),
+        );
+      }
 
       const [tablesData, ordersData] = await Promise.all([
         getDrinkTables(),
