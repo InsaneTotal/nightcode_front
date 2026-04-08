@@ -57,7 +57,22 @@ export async function createInventory(drinkData) {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to create inventory item");
+    let errorText = "No se pudo crear el producto";
+    try {
+      const errorData = await response.json();
+      errorText =
+        errorData?.detail ||
+        errorData?.message ||
+        errorData?.error ||
+        JSON.stringify(errorData);
+    } catch {
+      try {
+        const raw = await response.text();
+        if (raw) errorText = raw;
+      } catch {}
+    }
+
+    throw new Error(errorText);
   }
 
   const res = { message: "Producto ingresado con exito" };
