@@ -26,6 +26,112 @@ const TABLE_STATUS_OCCUPIED = 2;
 const getTableStatusId = (mesa) =>
   Number(mesa?.status ?? mesa?.id_status ?? mesa?.id_table_status ?? 0);
 
+const isWaiterCallPending = (mesa, tableStatusId, hasActiveOrder) => {
+  const toBool = (value) => {
+    if (value === true || value === 1) return true;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      return ["true", "1", "yes", "si", "pending", "pendiente"].includes(
+        normalized,
+      );
+    }
+    return false;
+  };
+
+  const booleanFlags = [
+    mesa?.call_waiter,
+    mesa?.waiter_called,
+    mesa?.requires_assistance,
+    mesa?.needs_assistance,
+    mesa?.pending_call,
+    mesa?.is_pending,
+  ];
+
+  const hasBooleanFlag = booleanFlags.some((flag) => toBool(flag));
+
+  const statusLabel = String(
+    mesa?.status_name ||
+      mesa?.table_status_name ||
+      mesa?.status_label ||
+      mesa?.table_status?.name ||
+      "",
+  ).toLowerCase();
+
+  const labelSuggestsCall = /(pendiente|llam|mesero|asistencia|help)/.test(
+    statusLabel,
+  );
+
+  const nonStandardStatusPending =
+    tableStatusId > 0 &&
+    ![TABLE_STATUS_FREE, TABLE_STATUS_OCCUPIED].includes(tableStatusId);
+
+  const occupiedWithoutOrderPending =
+    tableStatusId === TABLE_STATUS_OCCUPIED && !hasActiveOrder;
+
+  const backendColorSuggestsPending = /(red|pending|pendiente)/.test(
+    String(mesa?.color || "").toLowerCase(),
+  );
+
+  return (
+    hasBooleanFlag ||
+    labelSuggestsCall ||
+    occupiedWithoutOrderPending ||
+    nonStandardStatusPending ||
+    backendColorSuggestsPending
+  );
+};
+
+const WAITRESS_REALTIME_TOPICS = [
+  "order",
+  "orders",
+  "table",
+  "tables",
+  "drink-table",
+  "drink_tables",
+  "drinks",
+  "inventory",
+  "payment",
+  "payments",
+  "waiter",
+  "call-waiter",
+  "call_waiter",
+  "assistance",
+  "help",
+  "pending",
+];
+const WAITER_CALL_TOPICS = [
+  "waiter",
+  "call-waiter",
+  "call_waiter",
+  "assistance",
+  "help",
+];
+
+const getTableIdFromRealtimeEvent = (event) => {
+  const candidates = [
+    event?.table_id,
+    event?.tableId,
+    event?.id_table,
+    event?.id_mesa,
+    event?.mesa_id,
+    event?.table?.id,
+    event?.mesa?.id,
+    event?.payload?.table_id,
+    event?.payload?.tableId,
+    event?.payload?.id_table,
+    event?.payload?.id_mesa,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
 export default function WaitressPage() {
   const [mesaActiva, setMesaActiva] = useState(null);
   const [openModal, setOpenModal] = useState(false);
@@ -72,10 +178,17 @@ export default function WaitressPage() {
               o.id_order_status,
             ),
         );
+        const hasActiveOrder = Boolean(order && order.details.length > 0);
+        const hasWaiterCallPending = isWaiterCallPending(
+          mesa,
+          tableStatusId,
+          hasActiveOrder,
+        );
 
         return {
           ...mesa,
           orderId: order?.id,
+          hasWaiterCallPending,
           items: order
             ? Object.values(
                 order.details.reduce((acc, detail) => {
@@ -98,8 +211,9 @@ export default function WaitressPage() {
               )
             : [],
 
-          color:
-            order && order.details.length > 0
+          color: hasWaiterCallPending
+            ? "red"
+            : hasActiveOrder
               ? "yellow"
               : tableStatusId === TABLE_STATUS_FREE
                 ? "green"
@@ -115,6 +229,46 @@ export default function WaitressPage() {
     }
   }, []);
 
+  const pushPendingNotice = useCallback((tableId, message) => {
+    const normalizedId = Number(tableId);
+    if (!Number.isFinite(normalizedId) || normalizedId <= 0) return;
+
+    const normalizedMessage = message || `Mesa ${normalizedId} está llamando`;
+
+    if (noticeTimeoutsRef.current[normalizedId]) {
+      clearTimeout(noticeTimeoutsRef.current[normalizedId]);
+      delete noticeTimeoutsRef.current[normalizedId];
+    }
+
+    setPendingNotices((prev) => {
+      const exists = prev.some((notice) => notice.tableId === normalizedId);
+      if (exists) {
+        return prev.map((notice) =>
+          notice.tableId === normalizedId
+            ? { ...notice, message: normalizedMessage }
+            : notice,
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          tableId: normalizedId,
+          message: normalizedMessage,
+        },
+      ];
+    });
+
+    const timeoutId = setTimeout(() => {
+      setPendingNotices((prev) =>
+        prev.filter((notice) => notice.tableId !== normalizedId),
+      );
+      delete noticeTimeoutsRef.current[normalizedId];
+    }, 120000);
+
+    noticeTimeoutsRef.current[normalizedId] = timeoutId;
+  }, []);
+
   useEffect(() => {
     const initData = async () => {
       await loadData();
@@ -123,18 +277,26 @@ export default function WaitressPage() {
     initData();
 
     const unsubscribe = subscribeRealtimeUpdates((event) => {
+      const isWaiterCallEvent = matchesRealtimeTopics(
+        event,
+        WAITER_CALL_TOPICS,
+      );
+
+      if (isWaiterCallEvent) {
+        const tableId = getTableIdFromRealtimeEvent(event);
+        if (tableId) {
+          const message =
+            event?.detail ||
+            event?.message ||
+            event?.payload?.detail ||
+            `Mesa ${tableId} está llamando`;
+          pushPendingNotice(tableId, message);
+        }
+      }
+
       if (
-        matchesRealtimeTopics(event, [
-          "order",
-          "orders",
-          "table",
-          "tables",
-          "drink-table",
-          "drinks",
-          "inventory",
-          "payment",
-          "payments",
-        ])
+        isWaiterCallEvent ||
+        matchesRealtimeTopics(event, WAITRESS_REALTIME_TOPICS)
       ) {
         loadData();
       }
@@ -152,7 +314,7 @@ export default function WaitressPage() {
       unsubscribe();
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [loadData]);
+  }, [loadData, pushPendingNotice]);
 
   const estados = ["Todas", "Libre", "En consumo", "Pendiente"];
 
@@ -239,7 +401,9 @@ export default function WaitressPage() {
   };
 
   useEffect(() => {
-    const pendingIds = tables.filter((t) => t.color === "red").map((t) => t.id);
+    const pendingIds = tables
+      .filter((t) => t.hasWaiterCallPending || t.color === "red")
+      .map((t) => t.id);
     const newPendingIds = pendingIds.filter(
       (id) => !lastPendingIdsRef.current.includes(id),
     );
@@ -248,20 +412,7 @@ export default function WaitressPage() {
     );
 
     newPendingIds.forEach((id) => {
-      const notice = {
-        tableId: id,
-        message: `Mesa ${id} está llamando`,
-      };
-      setPendingNotices((prev) => [...prev, notice]);
-      const timeoutId = setTimeout(
-        () => {
-          setPendingNotices((prev) =>
-            prev.filter((n) => n.tableId !== id),
-          );
-        },
-        120000,
-      );
-      noticeTimeoutsRef.current[id] = timeoutId;
+      pushPendingNotice(id, `Mesa ${id} está llamando`);
     });
 
     removedPendingIds.forEach((id) => {
@@ -269,22 +420,18 @@ export default function WaitressPage() {
         clearTimeout(noticeTimeoutsRef.current[id]);
         delete noticeTimeoutsRef.current[id];
       }
-      setPendingNotices((prev) =>
-        prev.filter((n) => n.tableId !== id),
-      );
+      setPendingNotices((prev) => prev.filter((n) => n.tableId !== id));
     });
 
     lastPendingIdsRef.current = pendingIds;
-  }, [tables]);
+  }, [tables, pushPendingNotice]);
 
   const dismissPendingNotice = (tableId) => {
     if (noticeTimeoutsRef.current[tableId]) {
       clearTimeout(noticeTimeoutsRef.current[tableId]);
       delete noticeTimeoutsRef.current[tableId];
     }
-    setPendingNotices((prev) =>
-      prev.filter((n) => n.tableId !== tableId),
-    );
+    setPendingNotices((prev) => prev.filter((n) => n.tableId !== tableId));
   };
 
   const mesasFiltradas =
@@ -301,7 +448,9 @@ export default function WaitressPage() {
   const mesaActualLibre =
     getTableStatusId(mesaActual) === TABLE_STATUS_FREE ||
     mesaActual?.color === "green";
-  const mesaActualOcupada = getTableStatusId(mesaActual) === TABLE_STATUS_OCCUPIED;
+  const mesaActualOcupada =
+    getTableStatusId(mesaActual) === TABLE_STATUS_OCCUPIED;
+  const mesaActualPendiente = Boolean(mesaActual?.hasWaiterCallPending);
 
   return (
     <ProtectedRoute allowedRoles={["1", "2"]}>
@@ -351,11 +500,14 @@ export default function WaitressPage() {
                       mesa.color,
                     )}`}
                   >
-                    {mesa.items.length > 0 || getTableStatusId(mesa) === TABLE_STATUS_OCCUPIED
-                      ? "En consumo"
-                      : getTableStatusId(mesa) === TABLE_STATUS_FREE
-                        ? "Libre"
-                        : "Pendiente"}
+                    {mesa.hasWaiterCallPending
+                      ? "Pendiente"
+                      : mesa.items.length > 0 ||
+                          getTableStatusId(mesa) === TABLE_STATUS_OCCUPIED
+                        ? "En consumo"
+                        : getTableStatusId(mesa) === TABLE_STATUS_FREE
+                          ? "Libre"
+                          : "Pendiente"}
                   </span>
 
                   <motion.div
@@ -473,18 +625,22 @@ export default function WaitressPage() {
                   <div>
                     <p
                       className={`text-xl font-bold ${
-                        mesaActualLibre
-                          ? "text-green-400"
-                          : mesaActualOcupada
-                            ? "text-yellow-400"
-                            : "text-red-400"
+                        mesaActualPendiente
+                          ? "text-red-400"
+                          : mesaActualLibre
+                            ? "text-green-400"
+                            : mesaActualOcupada
+                              ? "text-yellow-400"
+                              : "text-red-400"
                       }`}
                     >
-                      {mesaActualLibre
-                        ? "Disponible"
-                        : mesaActualOcupada
-                          ? "En consumo"
-                          : "Pendiente"}
+                      {mesaActualPendiente
+                        ? "Pendiente"
+                        : mesaActualLibre
+                          ? "Disponible"
+                          : mesaActualOcupada
+                            ? "En consumo"
+                            : "Pendiente"}
                     </p>
                   </div>
 
@@ -553,7 +709,7 @@ export default function WaitressPage() {
                     <p className="text-sm font-semibold text-red-200">
                       Llamada de mesero
                     </p>
-                    <p className="mt-1 text-sm text-red-100 break-words">
+                    <p className="mt-1 text-sm text-red-100 wrap-break-word">
                       {notice.message}
                     </p>
                   </div>
