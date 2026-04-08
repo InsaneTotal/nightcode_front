@@ -30,10 +30,10 @@ export default function ModalPay({
 
   if (!abierto) return null;
 
-  const confirmar = () => {
+  const confirmar = (liberarMesa = true) => {
     if (!metodoPago) return;
 
-    onConfirmarPago(metodoPago);
+    onConfirmarPago(metodoPago, liberarMesa);
     setMetodoPago("");
     onClose();
   };
@@ -108,7 +108,7 @@ export default function ModalPay({
           </div>
 
           {/* BOTONES */}
-          <div className="flex justify-between gap-4">
+          <div className="flex flex-col sm:flex-row justify-between gap-3">
             <button
               onClick={() => {
                 setMetodoPago("");
@@ -120,18 +120,27 @@ export default function ModalPay({
             </button>
 
             <button
-              onClick={confirmar}
+              onClick={() => confirmar(true)}
               disabled={!metodoPago}
-              className={`
-                flex-1 py-2 rounded-xl font-semibold transition
-                ${
-                  metodoPago
-                    ? "bg-yellow-600 hover:bg-yellow-500 shadow-lg"
-                    : "bg-gray-700 cursor-not-allowed"
-                }
-              `}
+              className={`flex-1 py-2 rounded-xl font-semibold transition ${
+                metodoPago
+                  ? "bg-yellow-600 hover:bg-yellow-500 shadow-lg"
+                  : "bg-gray-700 cursor-not-allowed"
+              }`}
             >
-              Confirmar Pago
+              Pagar y liberar
+            </button>
+
+            <button
+              onClick={() => confirmar(false)}
+              disabled={!metodoPago}
+              className={`flex-1 py-2 rounded-xl font-semibold transition ${
+                metodoPago
+                  ? "bg-emerald-600 hover:bg-emerald-500 shadow-lg"
+                  : "bg-gray-700 cursor-not-allowed"
+              }`}
+            >
+              Pagar sin liberar
             </button>
           </div>
         </motion.div>

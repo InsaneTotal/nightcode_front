@@ -20,6 +20,11 @@ import {
 
 const ORDER_STATUS_CANCELLED = 5;
 const ORDER_STATUS_PAID = 4;
+const TABLE_STATUS_FREE = 1;
+const TABLE_STATUS_OCCUPIED = 2;
+
+const getTableStatusId = (mesa) =>
+  Number(mesa?.status ?? mesa?.id_status ?? mesa?.id_table_status ?? 0);
 
 export default function WaitressPage() {
   const [mesaActiva, setMesaActiva] = useState(null);
@@ -40,7 +45,6 @@ export default function WaitressPage() {
     cancelarPedidoMesa: hookCancelarPedido,
     liberarMesa: hookLiberarMesa,
     confirmarPago: hookConfirmarPago,
-    ocuparMesa: hookOcuparMesa,
     calcularTotal,
   } = useWaitressOrders(setTables, setMesaActiva, setOpenPago);
 
@@ -60,6 +64,7 @@ export default function WaitressPage() {
       const safeOrders = Array.isArray(ordersData) ? ordersData : [];
 
       const tablesWithOrders = safeTables.map((mesa) => {
+        const tableStatusId = getTableStatusId(mesa);
         const order = safeOrders.find(
           (o) =>
             o.id_mesa === mesa.id &&
@@ -96,9 +101,11 @@ export default function WaitressPage() {
           color:
             order && order.details.length > 0
               ? "yellow"
-              : mesa.status === 1
+              : tableStatusId === TABLE_STATUS_FREE
                 ? "green"
-                : "red",
+                : tableStatusId === TABLE_STATUS_OCCUPIED
+                  ? "yellow"
+                  : "red",
         };
       });
 
@@ -183,8 +190,8 @@ export default function WaitressPage() {
     await loadData();
   };
 
-  const confirmarPago = async (metodoPago) => {
-    await hookConfirmarPago(tables, mesaActiva, metodoPago);
+  const confirmarPago = async (metodoPago, liberarMesa = true) => {
+    await hookConfirmarPago(tables, mesaActiva, metodoPago, liberarMesa);
     await loadData();
   };
 
@@ -202,13 +209,6 @@ export default function WaitressPage() {
       message: "Se eliminarán todos los productos de esta mesa.",
       onConfirm: () => cancelarPedidoMesa(id),
     });
-  };
-
-  const ocuparMesa = async (id) => {
-    await hookOcuparMesa(tables, id);
-    dismissPendingNotice(id);
-    setMesaActiva(id);
-    setOpenModal(true);
   };
 
   const calcularStockDisponible = () => {
@@ -299,7 +299,9 @@ export default function WaitressPage() {
         );
   const mesaActual = tables.find((m) => m.id === mesaActiva);
   const mesaActualLibre =
-    mesaActual?.status === 1 || mesaActual?.color === "green";
+    getTableStatusId(mesaActual) === TABLE_STATUS_FREE ||
+    mesaActual?.color === "green";
+  const mesaActualOcupada = getTableStatusId(mesaActual) === TABLE_STATUS_OCCUPIED;
 
   return (
     <ProtectedRoute allowedRoles={["1", "2"]}>
@@ -349,9 +351,9 @@ export default function WaitressPage() {
                       mesa.color,
                     )}`}
                   >
-                    {mesa.items.length > 0
+                    {mesa.items.length > 0 || getTableStatusId(mesa) === TABLE_STATUS_OCCUPIED
                       ? "En consumo"
-                      : mesa.status === 1
+                      : getTableStatusId(mesa) === TABLE_STATUS_FREE
                         ? "Libre"
                         : "Pendiente"}
                   </span>
@@ -471,19 +473,27 @@ export default function WaitressPage() {
                   <div>
                     <p
                       className={`text-xl font-bold ${
-                        mesaActualLibre ? "text-green-400" : "text-red-400"
+                        mesaActualLibre
+                          ? "text-green-400"
+                          : mesaActualOcupada
+                            ? "text-yellow-400"
+                            : "text-red-400"
                       }`}
                     >
-                      {mesaActualLibre ? "Disponible" : "Pendiente"}
+                      {mesaActualLibre
+                        ? "Disponible"
+                        : mesaActualOcupada
+                          ? "En consumo"
+                          : "Pendiente"}
                     </p>
                   </div>
 
                   <div className="flex gap-3 w-full sm:w-auto">
                     <button
-                      onClick={() => ocuparMesa(mesaActual.id)}
+                      onClick={() => setOpenModal(true)}
                       className="px-6 py-3 rounded-2xl bg-emerald-500 text-black font-bold w-full sm:w-auto"
                     >
-                      ➕ Ocupar Mesa
+                      ➕ Agregar
                     </button>
 
                     {!mesaActualLibre && (
