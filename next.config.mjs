@@ -4,13 +4,8 @@ const nextConfig = {
     domains: ["localhost"],
     remotePatterns: [
       {
-        // protocol: "http",
-        // hostname: "localhost",
-        // port: "8000",
-        // pathname: "/media/**",
-
         protocol: "https",
-        hostname: "nightcode-backend.onrender.com",
+        hostname: "nightcode-back.onrender.com",
         pathname: "/media/**",
       },
     ],

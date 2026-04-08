@@ -261,7 +261,7 @@ export default function InventarioView() {
                               width={120}
                               height={120}
                               className="object-contain max-w-full max-h-full"
-                              unoptimized={isLocalhostImage(product.url_img)}
+                              // unoptimized={isLocalhostImage(product.url_img)}
                             />
                           </div>
 
