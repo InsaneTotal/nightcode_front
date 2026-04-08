@@ -11,6 +11,7 @@ const nextConfig = {
 
         protocol: "https",
         hostname: "nightcode-backend.onrender.com",
+        pathname: "/media/**",
       },
     ],
   },
