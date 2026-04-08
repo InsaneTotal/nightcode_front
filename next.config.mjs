@@ -10,7 +10,7 @@ const nextConfig = {
         // pathname: "/media/**",
 
         protocol: "https",
-        hostname: "nightcode-backend.onrender.com",
+        hostname: "nightcode-back.onrender.com",
         pathname: "/media/**",
       },
     ],
