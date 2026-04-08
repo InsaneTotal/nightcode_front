@@ -55,16 +55,16 @@ export default function AddCategoryModal({ isOpen, onClose, onSave }) {
     return typeof categoryName === "string" && categoryName.trim().length > 0;
   };
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4 ">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 px-4 py-4 backdrop-blur-sm sm:py-6">
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.2 }}
-        className="w-full max-w-md bg-linear-to-br from-[#4b2c4f] to-[#2e1b30]  border border-yellow-600/30 rounded-2xl p-8 relative"
+        className="relative w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-yellow-600/30 bg-linear-to-br from-[#4b2c4f] to-[#2e1b30] p-4 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6 lg:p-8"
       >
         <button
           onClick={handleClose}
-          className="absolute top-5 right-5 text-gray-400 hover:text-white"
+          className="absolute right-3 top-3 text-gray-400 hover:text-white sm:right-5 sm:top-5"
         >
           <X />
         </button>
@@ -87,7 +87,7 @@ export default function AddCategoryModal({ isOpen, onClose, onSave }) {
                 setCategoryName(e.target.value);
                 if (errorMessage) setErrorMessage("");
               }}
-              className="w-2/3 pl-2 bg-transparent border border-yellow-600/20 rounded-lg py-1 text-yellow-500 focus:outline-none focus:border-yellow-500"
+              className="w-full rounded-lg border border-yellow-600/20 bg-transparent px-3 py-2 text-yellow-500 focus:outline-none focus:border-yellow-500 md:w-2/3"
               // className="w-full mt-1 p-2 rounded-full bg-gray-200 text-black focus:outline-none focus:ring-2 focus:ring-yellow-500"
             />
             {errorMessage && (
