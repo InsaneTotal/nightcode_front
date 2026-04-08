@@ -3,13 +3,12 @@
 import { useState, useMemo, useEffect, act } from "react";
 import { motion } from "framer-motion";
 import {
-  UserPlus,
   Pencil,
-  Trash2,
   Users,
   DollarSign,
   CheckIcon,
   LockIcon,
+  BanIcon,
 } from "lucide-react";
 import EditEmpleadosModal from "./EditEmpleadosModal";
 import ChangePassword from "./changePassword";
@@ -230,7 +229,7 @@ export default function EmpleadosView() {
                         className="text-red-500 hover:text-red-400 transition"
                         aria-label={`Eliminar ${emp.first_name}`}
                       >
-                        <Trash2 size={16} />
+                        <BanIcon size={16} />
                       </button>
                       <button
                         onClick={() => {
@@ -318,10 +317,10 @@ export default function EmpleadosView() {
                           eliminarEmpleado(emp.id, emp.first_name, emp)
                         }
                         className="flex items-center justify-center gap-1 rounded-lg border border-red-400/30 bg-red-500/10 px-2 py-2 text-red-300"
-                        aria-label={`Eliminar ${emp.first_name}`}
+                        aria-label={`Desactivar ${emp.first_name}`}
                       >
-                        <Trash2 size={15} />
-                        <span className="text-xs">Eliminar</span>
+                        <BanIcon size={15} />
+                        <span className="text-xs">Desactivar</span>
                       </button>
 
                       <button
