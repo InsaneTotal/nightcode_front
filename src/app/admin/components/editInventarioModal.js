@@ -253,32 +253,32 @@ export default function EditInventarioModal({
   return (
     <div
       onKeyDown={handleKeyDown}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-4 backdrop-blur-sm sm:items-center sm:py-6"
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.2 }}
-        className="w-full max-w-4xl bg-linear-to-br from-zinc-900 via-zinc-950 to-black border border-yellow-600/30 rounded-2xl p-8 relative"
+        className="relative w-full max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-yellow-600/30 bg-linear-to-br from-zinc-900 via-zinc-950 to-black p-4 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6 lg:p-8"
       >
         {/* CLOSE */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-gray-400 hover:text-white"
+          className="absolute right-3 top-3 text-gray-400 hover:text-white sm:right-5 sm:top-5"
         >
           <X />
         </button>
 
-        <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex flex-col gap-6 md:flex-row md:gap-8">
           {/* IMAGE */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-64 h-72 bg-zinc-900 border border-yellow-600/20 rounded-xl flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4 md:items-start">
+            <div className="flex w-full max-w-sm items-center justify-center rounded-xl border border-yellow-600/20 bg-zinc-900 px-4 py-6 md:w-64 md:max-w-none md:h-72 md:px-0 md:py-0">
               <Image
                 src={formData.url_img || "/placeholder.png"}
                 alt={formData.name || "Producto"}
                 width={200}
                 height={200}
-                className="h-56 object-contain"
+                className="h-auto max-h-56 w-full object-contain md:h-56 md:w-auto"
                 unoptimized={isLocalhostImage(formData.url_img)}
               />
             </div>
@@ -306,7 +306,7 @@ export default function EditInventarioModal({
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              className="w-2/3 pl-2 bg-transparent border border-yellow-600/20 rounded-lg py-1 text-yellow-500 focus:outline-none focus:border-yellow-500"
+              className="w-full rounded-lg border border-yellow-600/20 bg-transparent px-3 py-2 text-yellow-500 focus:outline-none focus:border-yellow-500 md:w-2/3"
             />
 
             {/* CATEGORIAS */}
@@ -317,7 +317,7 @@ export default function EditInventarioModal({
                 name="category_name"
                 value={formData.category}
                 onChange={handleCategoryChange}
-                className="w-full bg-transparent border border-yellow-600/20 rounded-lg py-2 px-3 text-gray-400 focus:outline-none focus:border-yellow-500"
+                className="w-full rounded-lg border border-yellow-600/20 bg-transparent px-3 py-2 text-gray-400 focus:outline-none focus:border-yellow-500"
               >
                 <option value="">Seleccionar categoría</option>
                 {categories.map((category) => (
@@ -334,7 +334,7 @@ export default function EditInventarioModal({
             {/* CANTIDAD */}
             <div>
               <p className="text-gray-400 mb-2">Cantidad:</p>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                 <button
                   onClick={() =>
                     setFormData({
@@ -353,7 +353,7 @@ export default function EditInventarioModal({
                   transition={{ duration: 0.15 }}
                   value={formatNumber(formData.amount) || 0}
                   onChange={handleQuantityChange}
-                  className="w-24 text-center bg-transparent border border-yellow-600/20 rounded-lg py-1 text-white focus:outline-none focus:border-yellow-500"
+                  className="w-24 rounded-lg border border-yellow-600/20 bg-transparent py-2 text-center text-white focus:outline-none focus:border-yellow-500"
                 />
 
                 <button
@@ -370,7 +370,7 @@ export default function EditInventarioModal({
             {/* PRECIO */}
             <div>
               <p className="text-gray-400 mb-2">Precio:</p>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                 <button
                   onClick={() =>
                     setFormData({
@@ -389,7 +389,7 @@ export default function EditInventarioModal({
                   transition={{ duration: 0.15 }}
                   value={`$ ${formatNumber(formData.price) || 0}`}
                   onChange={handlePriceChange}
-                  className="w-32 text-center bg-transparent border border-yellow-600/20 rounded-lg py-1 text-green-400 font-semibold focus:outline-none focus:border-yellow-500"
+                  className="w-32 rounded-lg border border-yellow-600/20 bg-transparent py-2 text-center font-semibold text-green-400 focus:outline-none focus:border-yellow-500"
                 />
 
                 <button
@@ -411,7 +411,7 @@ export default function EditInventarioModal({
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                className="w-full bg-zinc-900 border border-yellow-600/20 rounded-xl p-4 text-sm focus:outline-none focus:border-yellow-500"
+                className="w-full rounded-xl border border-yellow-600/20 bg-zinc-900 p-4 text-sm focus:outline-none focus:border-yellow-500"
                 rows={4}
               />
             </div>

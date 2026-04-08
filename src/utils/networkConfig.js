@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = "http://127.0.0.1:8000";
+const DEFAULT_API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export const BACKEND_CONNECTION_ERROR =
   "No se pudo conectar al backend, revisa NEXT_PUBLIC_API_URL";
