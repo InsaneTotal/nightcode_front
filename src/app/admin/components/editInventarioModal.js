@@ -112,10 +112,29 @@ export default function EditInventarioModal({
 
   // validate solo retorna true/false, no muestra tooltip
   const validate = () => {
+    if (!formData.name || !String(formData.name).trim()) return false;
+    if (Number(formData.category) <= 0) return false;
     if (formData.amount < 0) return false;
     if (formData.price <= 0) return false;
     if (!formData.description || !formData.description.trim()) return false;
     return true;
+  };
+
+  const getNormalizedPayload = () => {
+    const payload = {
+      ...formData,
+      name: String(formData.name || "").trim(),
+      description: String(formData.description || "").trim(),
+      amount: toNumber(formData.amount, 0),
+      price: toNumber(formData.price, 0),
+      category: toNumber(formData.category, 0),
+    };
+
+    if (!payload.url_img || !String(payload.url_img).trim()) {
+      delete payload.url_img;
+    }
+
+    return payload;
   };
 
   /* ================= SWEET ALERT CONFIRM ================= */
@@ -149,6 +168,14 @@ export default function EditInventarioModal({
   };
 
   const confirmSave = async () => {
+    if (!formData.name || !String(formData.name).trim()) {
+      showTooltip("El nombre es obligatorio");
+      return;
+    }
+    if (Number(formData.category) <= 0) {
+      showTooltip("Debes seleccionar una categoría");
+      return;
+    }
     if (formData.amount < 0) {
       showTooltip("La cantidad no puede ser negativa");
       return;
@@ -180,12 +207,12 @@ export default function EditInventarioModal({
 
     if (result.isConfirmed) {
       if (isNewProduct) {
-        const response = await createInventory({ ...formData });
+        const response = await createInventory(getNormalizedPayload());
         await showAlert(response);
       }
 
       if (!isNewProduct) {
-        const payload = { ...formData };
+        const payload = getNormalizedPayload();
 
         if (!imageChanged) {
           delete payload.url_img;
@@ -231,7 +258,10 @@ export default function EditInventarioModal({
   };
 
   const handleCategoryChange = (e) => {
-    setFormData((prev) => ({ ...prev, category: e.target.value }));
+    setFormData((prev) => ({
+      ...prev,
+      category: toNumber(e.target.value, 0),
+    }));
   };
 
   // Ya no se usa isValid, todo se valida con validate()
@@ -274,12 +304,12 @@ export default function EditInventarioModal({
           <div className="flex flex-col items-center gap-4 md:items-start">
             <div className="flex w-full max-w-sm items-center justify-center rounded-xl border border-yellow-600/20 bg-zinc-900 px-4 py-6 md:w-64 md:max-w-none md:h-72 md:px-0 md:py-0">
               <Image
-                src={formData.url_img || "/placeholder.png"}
+                src={formData.url_img || "/logo_sinfondo.png"}
                 alt={formData.name || "Producto"}
                 width={200}
                 height={200}
                 className="h-auto max-h-56 w-full object-contain md:h-56 md:w-auto"
-                unoptimized={isLocalhostImage(formData.url_img)}
+                unoptimized
               />
             </div>
 
